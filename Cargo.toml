@@ -8,5 +8,6 @@ repository = "https://github.com/TooManyBees/lab.git"
 readme = "README.md"
 keywords = ["lab", "color", "pixel", "rgb"]
 categories = ["multimedia::images", "multimedia::video"]
+license = "MIT"
 
 [dependencies]
