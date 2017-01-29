@@ -5,6 +5,7 @@ authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = "Tools for converting RGB colors to the CIE-L*a*b* color space, and comparing differences in color."
 homepage = "https://github.com/TooManyBees/lab"
 repository = "https://github.com/TooManyBees/lab.git"
+readme = "README.md"
 keywords = ["lab", "color", "pixel", "rgb"]
 
 [dependencies]
