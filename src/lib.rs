@@ -91,6 +91,10 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
 }
 
 impl Lab {
+    pub fn from_rgba(rgb: [u8; 4]) -> Self {
+        Lab::from_rgb([rgb[0], rgb[1], rgb[2]])
+    }
+
     pub fn from_rgb(rgb: [u8; 3]) -> Self {
         let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
         let lab = xyz_to_lab(xyz);

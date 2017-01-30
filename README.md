@@ -16,6 +16,6 @@ use lab::Lab;
 use image::Rgba;
 
 let pixel: Rgba<u8> = Rgba { data: [253, 120, 138, 255] };
-let lab: Lab = pixel.data.into();
+let lab = Lab::from_rgba(pixel.data);
 // Lab  { l: 66.6348, a: 52.260696, b: 14.850557 }
 ```
