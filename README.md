@@ -1,4 +1,4 @@
-# Rust library for converting RGB colors to the CIE-L*a*b* color space
+# Rust library for converting RGB colors to the CIE-L\*a\*b\* color space
 
 ```rust
 extern crate lab;
