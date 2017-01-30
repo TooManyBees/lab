@@ -56,19 +56,6 @@ impl Lab {
     }
 }
 
-impl From<[u8; 4]> for Lab {
-    fn from(data: [u8; 4]) -> Self {
-        Lab::from_rgb(data[0], data[1], data[2])
-    }
-}
-
-impl From<[u8; 3]> for Lab {
-    fn from(data: [u8; 3]) -> Self {
-        Lab::from_rgb(data[0], data[1], data[2])
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::Lab;
@@ -76,19 +63,8 @@ mod tests {
     #[test]
     fn test_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
-        let lab: Lab = rgb.into();
         assert_eq!(
-            lab,
-            Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
-        );
-    }
-
-    #[test]
-    fn test_from_rgba() {
-        let rgba: [u8; 4] = [253, 120, 138, 255];
-        let lab: Lab = rgba.into();
-        assert_eq!(
-            lab,
+            Lab::from_rgb(rgb[0], rgb[1], rgb[2]),
             Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
         );
     }
