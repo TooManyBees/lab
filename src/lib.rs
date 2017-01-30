@@ -122,21 +122,28 @@ impl Lab {
 mod tests {
     use super::Lab;
 
+    const PINK: Lab = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
+
     #[test]
     fn test_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
         assert_eq!(
             Lab::from_rgb(rgb[0], rgb[1], rgb[2]),
-            Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+            PINK
         );
     }
 
     #[test]
     fn test_to_rgb() {
-        let lab = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
         assert_eq!(
-            lab.to_rgb(),
+            PINK.to_rgb(),
             [253, 120, 138]
         );
+    }
+
+    #[test]
+    fn test_distance() {
+        let ugly_websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
+        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.23636);
     }
 }
