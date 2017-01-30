@@ -91,8 +91,8 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
 }
 
 impl Lab {
-    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        let xyz = rgb_to_xyz([r as f32, g as f32, b as f32]);
+    pub fn from_rgb(rgb: [u8; 3]) -> Self {
+        let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
         let lab = xyz_to_lab(xyz);
         Lab {
             l: lab[0],
@@ -128,7 +128,7 @@ mod tests {
     fn test_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
         assert_eq!(
-            Lab::from_rgb(rgb[0], rgb[1], rgb[2]),
+            Lab::from_rgb(rgb),
             PINK
         );
     }
