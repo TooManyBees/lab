@@ -1,3 +1,7 @@
+//! # Lab
+//!
+//! Tools for converting RGB colors to L\*a\*b\* measurements.
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Lab {
     pub l: f32,
@@ -17,6 +21,7 @@ fn rgb_to_xyz(rgb: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+#[inline]
 fn rgb_to_xyz_map(c: f32) -> f32 {
     (if c > 0.04045 {
         ((c + 0.055) / 1.055).powf(2.4)
@@ -37,6 +42,7 @@ fn xyz_to_lab(xyz: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+#[inline]
 fn xyz_to_lab_map(c: f32) -> f32 {
     if c > 0.008856 {
         c.powf(1.0/3.0)
@@ -61,6 +67,7 @@ fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+#[inline]
 fn lab_to_xyz_map(c: f32) -> f32 {
     let raised = c.powf(3.0);
     if raised > 0.008856 {
@@ -82,6 +89,7 @@ fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
     [r, g, b]
 }
 
+#[inline]
 fn xyz_to_rgb_map(c: f32) -> f32 {
     (if c > 0.0031308 {
          1.055 * c.powf(1.0/2.4) - 0.055
@@ -91,11 +99,16 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
 }
 
 impl Lab {
-    pub fn from_rgba(rgb: [u8; 4]) -> Self {
-        Lab::from_rgb([rgb[0], rgb[1], rgb[2]])
-    }
-
-    pub fn from_rgb(rgb: [u8; 3]) -> Self {
+    /// Constructs a new `Lab` from a three-element array of `u8`s
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use lab::Lab;
+    /// let lab = Lab::from_rgb(&[240, 33, 95]);
+    /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// ```
+    pub fn from_rgb(rgb: &[u8; 3]) -> Self {
         let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
         let lab = xyz_to_lab(xyz);
         Lab {
@@ -105,6 +118,24 @@ impl Lab {
         }
     }
 
+    /// Constructs a new `Lab` from a four-element array of `u8`s
+    ///
+    /// The `Lab` struct does not store alpha channel information, so the last
+    /// `u8` representing alpha is discarded. This convenience method exists
+    /// in order to easily measure colors already stored in an RGBA array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use lab::Lab;
+    /// let lab = Lab::from_rgba(&[240, 33, 95, 255]);
+    /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// ```
+    pub fn from_rgba(rgba: &[u8; 4]) -> Self {
+        Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
+    }
+
+    /// Returns the `Lab`'s color in RGB, in a 3-element array.
     pub fn to_rgb(&self) -> [u8; 3] {
         let xyz = lab_to_xyz([self.l, self.a, self.b]);
         let rgb = xyz_to_rgb(xyz);
@@ -115,6 +146,18 @@ impl Lab {
         ]
     }
 
+    /// Measures the perceptual distance between the colors of one `Lab`
+    /// and an `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use lab::Lab;
+    /// let pink = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
+    /// let websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
+    /// let dist = pink.squared_distance(&websafe_pink);
+    /// // 254.23636
+    /// ```
     pub fn squared_distance(&self, other: &Lab) -> f32 {
         (self.l - other.l).powf(2.0) +
         (self.a - other.a).powf(2.0) +
@@ -132,7 +175,7 @@ mod tests {
     fn test_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
         assert_eq!(
-            Lab::from_rgb(rgb),
+            Lab::from_rgb(&rgb),
             PINK
         );
     }
