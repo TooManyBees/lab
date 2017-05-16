@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and
