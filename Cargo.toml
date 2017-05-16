@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-version = "0.4.0"
+version = "0.4.0" # bump html_root_url attribute in lib.rs
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and
@@ -8,6 +8,7 @@ comparing differences in color.
 """
 homepage = "https://github.com/TooManyBees/lab"
 repository = "https://github.com/TooManyBees/lab"
+documentation = "https://docs.rs/lab"
 readme = "README.md"
 keywords = ["lab", "color", "pixel", "rgb"]
 categories = ["multimedia::images", "multimedia::video"]
