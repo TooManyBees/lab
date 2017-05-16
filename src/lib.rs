@@ -2,7 +2,7 @@
 //!
 //! Tools for converting RGB colors to L\*a\*b\* measurements.
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
     pub l: f32,
     pub a: f32,
@@ -192,5 +192,17 @@ mod tests {
     fn test_distance() {
         let ugly_websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
         assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.23636);
+    }
+
+    #[test]
+    fn test_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<Lab>();
+    }
+
+    #[test]
+    fn test_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Lab>();
     }
 }
