@@ -2,7 +2,7 @@
 //!
 //! Tools for converting RGB colors to L\*a\*b\* measurements.
 
-#![doc(html_root_url = "https://docs.rs/lab/0.4.1")]
+#![doc(html_root_url = "https://docs.rs/lab/0.4.2")]
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
@@ -161,9 +161,9 @@ impl Lab {
     /// // 254.23636
     /// ```
     pub fn squared_distance(&self, other: &Lab) -> f32 {
-        (self.l - other.l).powf(2.0) +
-        (self.a - other.a).powf(2.0) +
-        (self.b - other.b).powf(2.0)
+        (self.l - other.l).powi(2) +
+        (self.a - other.a).powi(2) +
+        (self.b - other.b).powi(2)
     }
 }
 
