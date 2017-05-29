@@ -4,11 +4,31 @@
 
 #![doc(html_root_url = "https://docs.rs/lab/0.4.2")]
 
+extern crate num_traits;
+use num_traits::{FromPrimitive, ToPrimitive, clamp};
+use std::ops::{Sub, Add};
+
+pub trait Squarable {
+    fn square(&self) -> Self;
+}
+
+impl Squarable for f32 {
+    fn square(&self) -> f32 {
+        self.powi(2)
+    }
+}
+
+impl Squarable for i8 {
+    fn square(&self) -> i8 {
+        self.pow(2)
+    }
+}
+
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
-pub struct Lab {
-    pub l: f32,
-    pub a: f32,
-    pub b: f32,
+pub struct Lab<T> where T: Squarable + FromPrimitive + ToPrimitive + Sub<Output=T> + Add<Output=T> + Copy + std::fmt::Debug {
+    pub l: T,
+    pub a: T,
+    pub b: T,
 }
 
 fn rgb_to_xyz(rgb: [f32; 3]) -> [f32; 3] {
@@ -100,23 +120,30 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
     }) * 255.0
 }
 
-impl Lab {
-    /// Constructs a new `Lab` from a three-element array of `u8`s
+impl<T> Lab<T> where T: Squarable + FromPrimitive + ToPrimitive + Sub<Output=T> + Add<Output=T> + Copy + std::fmt::Debug {
+    /// Constructs a new `Lab` from a three-element array of `u8`s.
+    /// Labs can use f32 or i8 values internally.
     ///
     /// # Examples
     ///
     /// ```
     /// # use lab::Lab;
-    /// let lab = Lab::from_rgb(&[240, 33, 95]);
+    /// let lab: Lab<f32> = Lab::from_rgb(&[240, 33, 95]);
     /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// let lab: Lab<i8> = Lab::from_rgb(&[240, 33, 95]);
+    /// // Lab { l: 66, a: 52, b: 14 }
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
-        let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
+        let xyz = rgb_to_xyz([
+            rgb[0].to_f32().expect("A u8 didn't convert to an f32 correctly. Your computer is haunted."),
+            rgb[1].to_f32().expect("A u8 didn't convert to an f32 correctly. Your computer is haunted."),
+            rgb[2].to_f32().expect("A u8 didn't convert to an f32 correctly. Your computer is haunted.")
+        ]);
         let lab = xyz_to_lab(xyz);
         Lab {
-            l: lab[0],
-            a: lab[1],
-            b: lab[2],
+            l: num_traits::FromPrimitive::from_f32(clamp(lab[0], 0.0, 100.0)).expect("Value didn't convert from f32 correctly."),
+            a: num_traits::FromPrimitive::from_f32(clamp(lab[1], -128.0, 127.0)).expect("Value didn't convert from f32 correctly."),
+            b: num_traits::FromPrimitive::from_f32(clamp(lab[2], -128.0, 127.0)).expect("Value didn't convert from f32 correctly."),
         }
     }
 
@@ -130,8 +157,10 @@ impl Lab {
     ///
     /// ```
     /// # use lab::Lab;
-    /// let lab = Lab::from_rgba(&[240, 33, 95, 255]);
+    /// let lab: Lab<f32> = Lab::from_rgba(&[240, 33, 95, 255]);
     /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// let lab: Lab<i8> = Lab::from_rgb(&[240, 33, 95]);
+    /// // Lab { l: 66, a: 52, b: 14 }
     /// ```
     pub fn from_rgba(rgba: &[u8; 4]) -> Self {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
@@ -139,12 +168,16 @@ impl Lab {
 
     /// Returns the `Lab`'s color in RGB, in a 3-element array.
     pub fn to_rgb(&self) -> [u8; 3] {
-        let xyz = lab_to_xyz([self.l, self.a, self.b]);
+        let xyz = lab_to_xyz([
+            self.l.to_f32().expect("Value didn't convert to f32 correctly."),
+            self.a.to_f32().expect("Value didn't convert to f32 correctly."),
+            self.b.to_f32().expect("Value didn't convert to f32 correctly.")
+        ]);
         let rgb = xyz_to_rgb(xyz);
         [
-            rgb[0].round() as u8,
-            rgb[1].round() as u8,
-            rgb[2].round() as u8,
+            num_traits::FromPrimitive::from_f32(rgb[0].round()).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(rgb[1].round()).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(rgb[2].round()).expect("A f32 didn't convert to a u8 correctly."),
         ]
     }
 
@@ -160,10 +193,10 @@ impl Lab {
     /// let dist = pink.squared_distance(&websafe_pink);
     /// // 254.23636
     /// ```
-    pub fn squared_distance(&self, other: &Lab) -> f32 {
-        (self.l - other.l).powi(2) +
-        (self.a - other.a).powi(2) +
-        (self.b - other.b).powi(2)
+    pub fn squared_distance(&self, other: &Lab<T>) -> T {
+        (self.l - other.l).square() +
+        (self.a - other.a).square() +
+        (self.b - other.b).square()
     }
 }
 
@@ -171,40 +204,50 @@ impl Lab {
 mod tests {
     use super::Lab;
 
-    const PINK: Lab = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
+    const PINK_F32: Lab<f32> = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
+    const PINK_I8: Lab<i8> = Lab { l: 66, a: 52, b: 14 };
 
     #[test]
-    fn test_from_rgb() {
+    fn test_f32_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
         assert_eq!(
             Lab::from_rgb(&rgb),
-            PINK
+            PINK_F32
         );
     }
 
     #[test]
-    fn test_to_rgb() {
+    fn test_i8_from_rgb() {
+        let rgb: [u8; 3] = [253, 120, 138];
         assert_eq!(
-            PINK.to_rgb(),
+            Lab::from_rgb(&rgb),
+            PINK_I8
+        );
+    }
+
+    #[test]
+    fn test_f32_to_rgb() {
+        assert_eq!(
+            PINK_F32.to_rgb(),
             [253, 120, 138]
         );
     }
 
     #[test]
     fn test_distance() {
-        let ugly_websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
-        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.23636);
+        let ugly_websafe_pink: Lab<f32> = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
+        assert_eq!(PINK_F32.squared_distance(&ugly_websafe_pink), 254.23636);
     }
 
     #[test]
     fn test_send() {
         fn assert_send<T: Send>() {}
-        assert_send::<Lab>();
+        assert_send::<Lab<f32>>();
     }
 
     #[test]
     fn test_sync() {
         fn assert_sync<T: Sync>() {}
-        assert_sync::<Lab>();
+        assert_sync::<Lab<f32>>();
     }
 }

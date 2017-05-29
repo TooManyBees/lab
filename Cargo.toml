@@ -14,5 +14,8 @@ keywords = ["lab", "color", "pixel", "rgb"]
 categories = ["multimedia::images", "multimedia::video"]
 license = "MIT"
 
+[dependencies]
+num-traits = "~0.1"
+
 [dev-dependencies]
 rand = { version = "0.3" } # used for benchmark tests
