@@ -12,17 +12,18 @@ pub trait Squarable: FromPrimitive + ToPrimitive + Sub<Output=Self> + Add<Output
     fn square(&self) -> Self;
 }
 
-impl Squarable for f32 {
-    fn square(&self) -> f32 {
-        self.powi(2)
+macro_rules! impl_squarable {
+    ($fn:ident, $($t:ty),+) => {
+        $(impl Squarable for $t {
+            fn square(&self) -> Self {
+                self.$fn(2)
+            }
+        })+
     }
 }
 
-impl Squarable for i8 {
-    fn square(&self) -> i8 {
-        self.pow(2)
-    }
-}
+impl_squarable!(pow, i8, i16, i32, i64, isize);
+impl_squarable!(powi, f32, f64);
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab<T: Squarable> {
