@@ -8,7 +8,7 @@ extern crate num_traits;
 use num_traits::{FromPrimitive, ToPrimitive, clamp};
 use std::ops::{Sub, Add};
 
-pub trait Squarable {
+pub trait Squarable: FromPrimitive + ToPrimitive + Sub<Output=Self> + Add<Output=Self> + Copy + std::fmt::Debug {
     fn square(&self) -> Self;
 }
 
@@ -25,7 +25,7 @@ impl Squarable for i8 {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
-pub struct Lab<T> where T: Squarable + FromPrimitive + ToPrimitive + Sub<Output=T> + Add<Output=T> + Copy + std::fmt::Debug {
+pub struct Lab<T: Squarable> {
     pub l: T,
     pub a: T,
     pub b: T,
@@ -120,7 +120,7 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
     }) * 255.0
 }
 
-impl<T> Lab<T> where T: Squarable + FromPrimitive + ToPrimitive + Sub<Output=T> + Add<Output=T> + Copy + std::fmt::Debug {
+impl<T: Squarable> Lab<T> {
     /// Constructs a new `Lab` from a three-element array of `u8`s.
     /// Labs can use f32 or i8 values internally.
     ///
