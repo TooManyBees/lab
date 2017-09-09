@@ -71,7 +71,7 @@ fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
 
 #[inline]
 fn lab_to_xyz_map(c: f32) -> f32 {
-    let raised = c.powf(3.0);
+    let raised = c.powi(3);
     if raised > 0.008856 {
         raised
     } else {
