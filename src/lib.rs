@@ -142,9 +142,9 @@ impl Lab {
         let xyz = lab_to_xyz([self.l, self.a, self.b]);
         let rgb = xyz_to_rgb(xyz);
         [
-            rgb[0].round() as u8,
-            rgb[1].round() as u8,
-            rgb[2].round() as u8,
+            rgb[0].round().min(255.).max(0.) as u8,
+            rgb[1].round().min(255.).max(0.) as u8,
+            rgb[2].round().min(255.).max(0.) as u8,
         ]
     }
 
