@@ -2,7 +2,7 @@
 //!
 //! Tools for converting RGB colors to L\*a\*b\* measurements.
 
-#![doc(html_root_url = "https://docs.rs/lab/0.4.2")]
+#![doc(html_root_url = "https://docs.rs/lab/0.4.3")]
 
 extern crate num_traits;
 use num_traits::{FromPrimitive, ToPrimitive, clamp};
@@ -92,7 +92,7 @@ fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
 
 #[inline]
 fn lab_to_xyz_map(c: f32) -> f32 {
-    let raised = c.powf(3.0);
+    let raised = c.powi(3);
     if raised > 0.008856 {
         raised
     } else {
@@ -176,9 +176,9 @@ impl<T: Squarable> Lab<T> {
         ]);
         let rgb = xyz_to_rgb(xyz);
         [
-            num_traits::FromPrimitive::from_f32(rgb[0].round()).expect("A f32 didn't convert to a u8 correctly."),
-            num_traits::FromPrimitive::from_f32(rgb[1].round()).expect("A f32 didn't convert to a u8 correctly."),
-            num_traits::FromPrimitive::from_f32(rgb[2].round()).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(rgb[0].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(rgb[1].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(rgb[2].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
         ]
     }
 
