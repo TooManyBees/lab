@@ -176,9 +176,9 @@ impl<T: Squarable> Lab<T> {
         ]);
         let rgb = xyz_to_rgb(xyz);
         [
-            num_traits::FromPrimitive::from_f32(rgb[0].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
-            num_traits::FromPrimitive::from_f32(rgb[1].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
-            num_traits::FromPrimitive::from_f32(rgb[2].round().min(255.).max(0.)).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(clamp(rgb[0].round(), 0., 255.)).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(clamp(rgb[1].round(), 0., 255.)).expect("A f32 didn't convert to a u8 correctly."),
+            num_traits::FromPrimitive::from_f32(clamp(rgb[2].round(), 0., 255.)).expect("A f32 didn't convert to a u8 correctly."),
         ]
     }
 
