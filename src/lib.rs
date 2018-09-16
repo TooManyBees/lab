@@ -4,8 +4,10 @@
 
 #![doc(html_root_url = "https://docs.rs/lab/0.4.4")]
 
-#[cfg(all(target_arch = "x86_64", target_feature = "avx"))]
+#[cfg(target_arch = "x86_64")]
 mod avx;
+#[cfg(target_arch = "x86_64")]
+pub use avx::rgbs_to_labs as rgbs_to_labs_avx;
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
@@ -116,18 +118,21 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
     }) * 255.0
 }
 
+#[inline]
+pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
+    rgbs.iter().map(Lab::from_rgb).collect()
+}
+
 impl Lab {
 
     pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
-        rgbs.iter().map(Lab::from_rgb).collect()
-    }
-
-    pub fn from_rgbs_avx(rgbs: &[[u8; 3]]) -> Vec<Self> {
-        #[cfg(all(target_arch = "x86_64", target_feature = "avx"))]
-        let res = avx::rgbs_to_labs(rgbs);
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx")))]
-        let res = Lab::from_rgbs(rgbs);
-        res
+        #[cfg(target_arch = "x86_64")]
+        {
+            if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+                return unsafe { rgbs_to_labs_avx(rgbs) };
+            }
+        }
+        rgbs_to_labs(rgbs)
     }
 
     /// Constructs a new `Lab` from a three-element array of `u8`s

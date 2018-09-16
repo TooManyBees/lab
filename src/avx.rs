@@ -115,25 +115,24 @@ unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
     (l, a, b)
 }
 
-pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
+#[allow(dead_code)]
+pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     rgbs.chunks(8).map(|rgbs| {
         match rgbs {
             &[rgb0, rgb1, rgb2, rgb3, rgb4, rgb5, rgb6, rgb7] => {
-                unsafe {
-                    let (r, g, b) = avx_load_rgbs(&[
-                        [rgb0[0] as f32, rgb0[1] as f32, rgb0[2] as f32],
-                        [rgb1[0] as f32, rgb1[1] as f32, rgb1[2] as f32],
-                        [rgb2[0] as f32, rgb2[1] as f32, rgb2[2] as f32],
-                        [rgb3[0] as f32, rgb3[1] as f32, rgb3[2] as f32],
-                        [rgb4[0] as f32, rgb4[1] as f32, rgb4[2] as f32],
-                        [rgb5[0] as f32, rgb5[1] as f32, rgb5[2] as f32],
-                        [rgb6[0] as f32, rgb6[1] as f32, rgb6[2] as f32],
-                        [rgb7[0] as f32, rgb7[1] as f32, rgb7[2] as f32],
-                    ]);
-                    let (x, y, z) = rgbs_to_xyzs(r, g, b);
-                    let (l, a, b) = xyzs_to_labs(x, y, z);
-                    avx_dump_labs(l, a, b)
-                }
+                let (r, g, b) = avx_load_rgbs(&[
+                    [rgb0[0] as f32, rgb0[1] as f32, rgb0[2] as f32],
+                    [rgb1[0] as f32, rgb1[1] as f32, rgb1[2] as f32],
+                    [rgb2[0] as f32, rgb2[1] as f32, rgb2[2] as f32],
+                    [rgb3[0] as f32, rgb3[1] as f32, rgb3[2] as f32],
+                    [rgb4[0] as f32, rgb4[1] as f32, rgb4[2] as f32],
+                    [rgb5[0] as f32, rgb5[1] as f32, rgb5[2] as f32],
+                    [rgb6[0] as f32, rgb6[1] as f32, rgb6[2] as f32],
+                    [rgb7[0] as f32, rgb7[1] as f32, rgb7[2] as f32],
+                ]);
+                let (x, y, z) = rgbs_to_xyzs(r, g, b);
+                let (l, a, b) = xyzs_to_labs(x, y, z);
+                avx_dump_labs(l, a, b)
             },
             rest => {
                 let mut rgbs: Vec<[f32; 3]> = Vec::with_capacity(8);
@@ -144,12 +143,10 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
                 for _ in 0..num_padding {
                     rgbs.push([f32::NAN; 3]);
                 }
-                unsafe {
-                    let (r, g, b) = avx_load_rgbs(rgbs.as_slice());
-                    let (x, y, z) = rgbs_to_xyzs(r, g, b);
-                    let (l, a, b) = xyzs_to_labs(x, y, z);
-                    avx_dump_labs(l, a, b)
-                }
+                let (r, g, b) = avx_load_rgbs(rgbs.as_slice());
+                let (x, y, z) = rgbs_to_xyzs(r, g, b);
+                let (l, a, b) = xyzs_to_labs(x, y, z);
+                avx_dump_labs(l, a, b)
             },
         }
     })
