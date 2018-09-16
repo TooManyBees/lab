@@ -25,5 +25,17 @@ fn rgb_to_lab(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, rgb_to_lab);
+fn rgbs_to_labs(c: &mut Criterion) {
+    c.bench_function("rgbs_to_labs", move |b| {
+        b.iter(|| Lab::from_rgbs(&RGBS))
+    });
+}
+
+fn rgbs_to_labs_avx(c: &mut Criterion) {
+    c.bench_function("rgbs_to_labs_avx", move |b| {
+        b.iter(|| Lab::from_rgbs_avx(&RGBS))
+    });
+}
+
+criterion_group!(benches, rgb_to_lab, rgbs_to_labs, rgbs_to_labs_avx);
 criterion_main!(benches);

@@ -4,6 +4,9 @@
 
 #![doc(html_root_url = "https://docs.rs/lab/0.4.4")]
 
+#[cfg(all(target_arch = "x86_64", target_feature = "avx"))]
+mod avx;
+
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
     pub l: f32,
@@ -114,6 +117,19 @@ fn xyz_to_rgb_map(c: f32) -> f32 {
 }
 
 impl Lab {
+
+    pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
+        rgbs.iter().map(Lab::from_rgb).collect()
+    }
+
+    pub fn from_rgbs_avx(rgbs: &[[u8; 3]]) -> Vec<Self> {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx"))]
+        let res = avx::rgbs_to_labs(rgbs);
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "avx")))]
+        let res = Lab::from_rgbs(rgbs);
+        res
+    }
+
     /// Constructs a new `Lab` from a three-element array of `u8`s
     ///
     /// # Examples
