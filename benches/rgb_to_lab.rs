@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 #[macro_use]
 extern crate criterion;
 #[macro_use]
@@ -36,5 +38,5 @@ fn rgbs_to_labs_avx(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, rgb_to_lab, rgbs_to_labs, rgbs_to_labs_avx);
+criterion_group!(benches, rgbs_to_labs, rgbs_to_labs_avx);
 criterion_main!(benches);

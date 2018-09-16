@@ -21,6 +21,7 @@ bench = false
 rand = "0.5"
 criterion = "0.2"
 lazy_static = "*"
+pretty_assertions = "0.5"
 
 [[bench]]
 name = "rgb_to_lab"

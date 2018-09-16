@@ -4,6 +4,16 @@
 
 #![doc(html_root_url = "https://docs.rs/lab/0.4.4")]
 
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+#[cfg(test)]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate lazy_static;
+#[cfg(test)]
+extern crate rand;
+
 #[cfg(target_arch = "x86_64")]
 mod avx;
 #[cfg(target_arch = "x86_64")]

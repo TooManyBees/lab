@@ -157,3 +157,55 @@ pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
         v
     })
 }
+
+#[cfg(all(test, target_feature = "avx", target_feature = "sse4.1"))]
+mod test {
+    use rand;
+    use rand::Rng;
+    use rand::distributions::Standard;
+    use super::rgbs_to_labs as rgbs_to_labs_avx;
+    use super::super::rgbs_to_labs;
+
+    lazy_static! {
+        static ref RGBS: Vec<[u8;3]> = {
+            let rand_seed = [0u8;32];
+            let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
+            rng.sample_iter(&Standard).take(512).collect()
+        };
+    }
+
+    #[test]
+    fn test_avx() {
+        let rgbs = vec![
+            [253, 120, 138], // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+            [25, 20, 22],    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
+            [63, 81, 181],   // Lab { l: 38.336494, a: 25.586218, b: -55.288517 }
+            [21, 132, 102],  // Lab { l: 49.033485, a: -36.959187, b: 7.9363704 }
+            [255, 193, 7],   // Lab { l: 81.519325, a: 9.4045105, b: 82.69791 }
+            [233, 30, 99],   // Lab { l: 50.865776, a: 74.61989, b: 15.343171 }
+            [155, 96, 132],  // Lab { l: 48.260345, a: 29.383003, b: -9.950054 }
+            [249, 165, 33],  // Lab { l: 74.29188, a: 21.827251, b: 72.75864 }
+        ];
+
+        let labs_non_avx = rgbs_to_labs(&rgbs);
+        let labs_avx = unsafe { rgbs_to_labs_avx(&rgbs) };
+        assert_eq!(labs_avx, labs_non_avx);
+    }
+
+    #[test]
+    fn test_avx_random() {
+        let labs_non_avx = rgbs_to_labs(&RGBS);
+        let labs_avx = unsafe { rgbs_to_labs_avx(&RGBS) };
+        assert_eq!(labs_avx, labs_non_avx);
+    }
+
+    #[test]
+    fn test_avx_unsaturated() {
+        let rgbs = vec![
+            [253, 120, 138],
+        ];
+        let labs_non_avx = rgbs_to_labs(&rgbs);
+        let labs_avx = unsafe { rgbs_to_labs_avx(&rgbs) };
+        assert_eq!(labs_avx, labs_non_avx);
+    }
+}
