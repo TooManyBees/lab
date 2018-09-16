@@ -28,7 +28,7 @@ unsafe fn avx_dump_labs(l: __m256, a: __m256, b: __m256) -> Vec<Lab> {
     let a: [f32; 8] = mem::transmute(a);
     let b: [f32; 8] = mem::transmute(b);
 
-    l.iter().zip(a.iter()).zip(b.iter()).map(|((&l, &a), &b)| Lab { l, a, b }).collect()
+    l.iter().zip(a.iter()).zip(b.iter()).map(|((&l, &a), &b)| Lab { l, a, b }).rev().collect()
 }
 
 unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
@@ -51,7 +51,7 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
     let false_branch = _mm256_div_ps(c, _mm256_set1_ps(12.92));
     // TODO: is it more efficient to mask the branch operations
     // than to blend once?
-    let blended = _mm256_blendv_ps(true_branch, false_branch, mask);
+    let blended = _mm256_blendv_ps(false_branch, true_branch, mask);
 
     _mm256_mul_ps(blended, _mm256_set1_ps(100.0))
 }
@@ -117,8 +117,8 @@ unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 
 #[allow(dead_code)]
 pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
-    rgbs.chunks(8).map(|rgbs| {
-        match rgbs {
+    rgbs.chunks(8).fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
+        let labs = match rgbs {
             &[rgb0, rgb1, rgb2, rgb3, rgb4, rgb5, rgb6, rgb7] => {
                 let (r, g, b) = avx_load_rgbs(&[
                     [rgb0[0] as f32, rgb0[1] as f32, rgb0[2] as f32],
@@ -146,11 +146,11 @@ pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
                 let (r, g, b) = avx_load_rgbs(rgbs.as_slice());
                 let (x, y, z) = rgbs_to_xyzs(r, g, b);
                 let (l, a, b) = xyzs_to_labs(x, y, z);
-                avx_dump_labs(l, a, b)
+                let mut labs = avx_dump_labs(l, a, b);
+                labs.truncate(rest.len());
+                labs
             },
-        }
-    })
-    .fold(Vec::with_capacity(rgbs.len()), |mut v, labs| {
+        };
         v.extend_from_slice(&labs);
         v
     })
