@@ -5,8 +5,6 @@ use super::Lab;
 
 type TuplesF32 = (f32, f32, f32, f32, f32, f32, f32, f32);
 
-// FIXME: gate _mm256_fmadd_ps behind the "fma" target feature
-
 unsafe fn avx_load_rgbs(rgbs: &[[f32; 3]]) -> (__m256, __m256, __m256) {
     assert_eq!(rgbs.len(), 8);
     let rgb0 = rgbs.get_unchecked(0);
@@ -67,21 +65,24 @@ unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m2
     let b = rgbs_to_xyzs_map(b);
 
     let x = {
-        let sum = _mm256_mul_ps(r, _mm256_set1_ps(0.4124));
-        let sum = _mm256_fmadd_ps(g, _mm256_set1_ps(0.3576), sum);
-        _mm256_fmadd_ps(b, _mm256_set1_ps(0.1805), sum)
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.4124));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.3576));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.1805));
+        _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
     let y = {
-        let sum = _mm256_mul_ps(r, _mm256_set1_ps(0.2126));
-        let sum = _mm256_fmadd_ps(g, _mm256_set1_ps(0.7152), sum);
-        _mm256_fmadd_ps(b, _mm256_set1_ps(0.0722), sum)
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.2126));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.7152));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.0722));
+        _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
     let z = {
-        let sum = _mm256_mul_ps(r, _mm256_set1_ps(0.0193));
-        let sum = _mm256_fmadd_ps(g, _mm256_set1_ps(0.1192), sum);
-        _mm256_fmadd_ps(b, _mm256_set1_ps(0.9505), sum)
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.0193));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.1192));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.9505));
+        _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
     (x, y, z)
@@ -89,7 +90,8 @@ unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m2
 
 unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
     // do false branch first
-    let false_branch = _mm256_fmadd_ps(c, _mm256_set1_ps(7.787), _mm256_set1_ps(16.0 / 116.0));
+    let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(7.787));
+    let false_branch = _mm256_add_ps(_mm256_set1_ps(16.0 / 116.0), false_branch);
 
     let unpacked_false_branch: [f32; 8] = mem::transmute(false_branch);
     let mut unpacked: [f32; 8] = mem::transmute(c);
@@ -97,18 +99,18 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
         if *el > 0.008856 {
             *el = el.powf(1.0/3.0);
         } else {
-            *el = unpacked_false_branch[i]
+            *el = unpacked_false_branch[i];
         }
     }
     mem::transmute(unpacked)
 }
 
 unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
-    let x = xyzs_to_labs_map(_mm256_mul_ps(x, _mm256_set1_ps(95.047)));
-    let y = xyzs_to_labs_map(_mm256_mul_ps(y, _mm256_set1_ps(100.0)));
-    let z = xyzs_to_labs_map(_mm256_mul_ps(z, _mm256_set1_ps(108.883)));
+    let x = xyzs_to_labs_map(_mm256_div_ps(x, _mm256_set1_ps(95.047)));
+    let y = xyzs_to_labs_map(_mm256_div_ps(y, _mm256_set1_ps(100.0)));
+    let z = xyzs_to_labs_map(_mm256_div_ps(z, _mm256_set1_ps(108.883)));
 
-    let l = _mm256_fmadd_ps(y, _mm256_set1_ps(116.0), _mm256_set1_ps(-16.0));
+    let l = _mm256_add_ps(_mm256_mul_ps(y, _mm256_set1_ps(116.0)), _mm256_set1_ps(-16.0));
     let a = _mm256_mul_ps(_mm256_sub_ps(x, y), _mm256_set1_ps(500.0));
     let b = _mm256_mul_ps(_mm256_sub_ps(y, z), _mm256_set1_ps(200.0));
 
