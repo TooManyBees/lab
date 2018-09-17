@@ -80,6 +80,7 @@ unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
     r.iter().zip(g.iter()).zip(b.iter()).map(|((&r, &g), &b)| [r as u8, g as u8, b as u8]).rev().collect()
 }
 
+#[inline]
 unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.04045), _CMP_GT_OQ);
     let true_branch = {
@@ -136,6 +137,7 @@ unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m2
     (x, y, z)
 }
 
+#[inline]
 unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
     // do false branch first
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(7.787));
@@ -228,6 +230,7 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
     (x, y, z)
 }
 
+#[inline]
 unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
     let true_branch = {
