@@ -54,29 +54,42 @@ fn xyz_to_lab_map(c: f32) -> f32 {
 }
 
 fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
-    let mut y = (lab[0] + 16.0) / 116.0;
-    let mut x = (lab[1] / 500.0) + y;
-    let mut z = y - (lab[2] / 200.0);
-
-    x = lab_to_xyz_map(x);
-    y = lab_to_xyz_map(y);
-    z = lab_to_xyz_map(z);
+    let l = lab[0];
+    let a = lab[1];
+    let b = lab[2];
+    let fy = (l + 16.0) / 116.0;
+    let fx = (a / 500.0) + fy;
+    let fz = fy - (b / 200.0);
+    let xr = {
+        let raised = fx.powi(3);
+        if raised > 0.008856 {
+            raised
+        } else {
+            ((fx * 116.0) - 16.0) / 903.3
+        }
+    };
+    let yr = {
+        let raised = fy.powi(3);
+        if l > 0.008856 * 903.3 {
+            raised
+        } else {
+            l / 903.3
+        }
+    };
+    let zr = {
+        let raised = fz.powi(3);
+        if raised > 0.008856 {
+            raised
+        } else {
+            ((fz * 116.0) - 16.0) / 903.3
+        }
+    };
 
     [
-        x * 95.047,
-        y * 100.0,
-        z * 108.883,
+        xr * 95.047,
+        yr * 100.0,
+        zr * 108.883,
     ]
-}
-
-#[inline]
-fn lab_to_xyz_map(c: f32) -> f32 {
-    let raised = c.powi(3);
-    if raised > 0.008856 {
-        raised
-    } else {
-        (c - 16.0) / 116.0 / 7.787
-    }
 }
 
 fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
@@ -94,9 +107,9 @@ fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
 #[inline]
 fn xyz_to_rgb_map(c: f32) -> f32 {
     (if c > 0.0031308 {
-         1.055 * c.powf(1.0/2.4) - 0.055
+        1.055 * c.powf(1.0/2.4) - 0.055
     } else {
-         12.92 * c
+        12.92 * c
     }) * 255.0
 }
 
