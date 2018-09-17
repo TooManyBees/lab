@@ -26,3 +26,7 @@ pretty_assertions = "0.5"
 [[bench]]
 name = "rgb_to_lab"
 harness = false
+
+[[bench]]
+name = "lab_to_rgb"
+harness = false

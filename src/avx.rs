@@ -354,7 +354,7 @@ mod test {
     use rand::distributions::Standard;
     use super::rgbs_to_labs as rgbs_to_labs_avx;
     use super::labs_to_rgbs as labs_to_rgbs_avx;
-    use super::super::rgbs_to_labs;
+    use super::super::{Lab, rgbs_to_labs, labs_to_rgbs};
 
     lazy_static! {
         static ref RGBS: Vec<[u8;3]> = {
@@ -365,7 +365,7 @@ mod test {
     }
 
     #[test]
-    fn test_avx() {
+    fn test_avx_rgbs_to_labs() {
         let rgbs = vec![
             [253, 120, 138], // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
             [25, 20, 22],    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
@@ -383,14 +383,14 @@ mod test {
     }
 
     #[test]
-    fn test_avx_random() {
+    fn test_avx_rgbs_to_labs_many() {
         let labs_non_avx = rgbs_to_labs(&RGBS);
         let labs_avx = unsafe { rgbs_to_labs_avx(&RGBS) };
         assert_eq!(labs_avx, labs_non_avx);
     }
 
     #[test]
-    fn test_avx_unsaturated() {
+    fn test_avx_rgbs_to_labs_unsaturated() {
         let rgbs = vec![
             [253, 120, 138],
         ];
@@ -404,5 +404,15 @@ mod test {
         let labs = unsafe { rgbs_to_labs_avx(&RGBS) };
         let rgbs = unsafe { labs_to_rgbs_avx(&labs) };
         assert_eq!(rgbs.as_slice(), RGBS.as_slice());
+    }
+
+    #[test]
+    fn test_avx_labs_to_rgbs_unsaturated() {
+        let labs = vec![
+            Lab { l: 66.6348, a: 52.260696, b: 14.850557 },
+        ];
+        let rgbs_non_avx = labs_to_rgbs(&labs);
+        let rgbs_avx = unsafe { labs_to_rgbs_avx(&labs) };
+        assert_eq!(rgbs_avx, rgbs_non_avx);
     }
 }

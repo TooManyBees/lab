@@ -230,7 +230,10 @@ impl Lab {
 
 #[cfg(test)]
 mod tests {
-    use super::Lab;
+    use rand;
+    use rand::Rng;
+    use rand::distributions::Standard;
+    use super::{Lab, rgbs_to_labs, labs_to_rgbs};
 
     const PINK: Lab = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
 
@@ -267,5 +270,17 @@ mod tests {
     fn test_sync() {
         fn assert_sync<T: Sync>() {}
         assert_sync::<Lab>();
+    }
+
+    #[test]
+    fn test_rgb_to_lab_to_rgb() {
+        let rgbs: Vec<[u8; 3]> = {
+            let rand_seed = [1u8;32];
+            let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
+            rng.sample_iter(&Standard).take(2048).collect()
+        };
+        let labs = rgbs_to_labs(&rgbs);
+        let rgbs2 = labs_to_rgbs(&labs);
+        assert_eq!(rgbs2, rgbs);
     }
 }
