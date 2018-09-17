@@ -18,6 +18,8 @@ extern crate rand;
 mod avx;
 #[cfg(target_arch = "x86_64")]
 pub use avx::rgbs_to_labs as rgbs_to_labs_avx;
+#[cfg(target_arch = "x86_64")]
+pub use avx::labs_to_rgbs as labs_to_rgbs_avx;
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
@@ -133,6 +135,11 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     rgbs.iter().map(Lab::from_rgb).collect()
 }
 
+#[inline]
+pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+    labs.iter().map(Lab::to_rgb).collect()
+}
+
 impl Lab {
 
     pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
@@ -143,6 +150,16 @@ impl Lab {
             }
         }
         rgbs_to_labs(rgbs)
+    }
+
+    pub fn to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+        #[cfg(target_arch = "x86_64")]
+        {
+            if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+                return unsafe { labs_to_rgbs_avx(labs) };
+            }
+        }
+        labs_to_rgbs(labs)
     }
 
     /// Constructs a new `Lab` from a three-element array of `u8`s
