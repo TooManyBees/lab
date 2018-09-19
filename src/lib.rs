@@ -19,9 +19,9 @@ const EPSILON: f32 = 216.0 / 24389.0;
 const CBRT_EPSILON: f32 = 0.20689655172413796;
 
 fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
-    let r = rgb_to_xyz_map(rgb[0] as f32 / 255.0);
-    let g = rgb_to_xyz_map(rgb[1] as f32 / 255.0);
-    let b = rgb_to_xyz_map(rgb[2] as f32 / 255.0);
+    let r = rgb_to_xyz_map(rgb[0]);
+    let g = rgb_to_xyz_map(rgb[1]);
+    let b = rgb_to_xyz_map(rgb[2]);
 
     [
         r*0.4124564390896921   + g*0.357576077643909 + b*0.18043748326639894,
@@ -31,11 +31,14 @@ fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
 }
 
 #[inline]
-fn rgb_to_xyz_map(c: f32) -> f32 {
-    if c > 0.04045 {
-        ((c + 0.055) / 1.055).powf(2.4)
+fn rgb_to_xyz_map(c: u8) -> f32 {
+    if c > 10 {
+        const A: f32 = 0.055 * 255.0;
+        const D: f32 = 1.055 * 255.0;
+        ((c as f32 + A) / D).powf(2.4)
     } else {
-        c / 12.92
+        const D: f32 = 12.92 * 255.0;
+        c as f32 / D
     }
 }
 
@@ -119,7 +122,7 @@ impl Lab {
     ///
     /// ```
     /// let lab = lab::Lab::from_rgb(&[240, 33, 95]);
-    /// assert_eq!(lab::Lab { l: 52.33687, a: 75.5516, b: 19.99889 }, lab);
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
         xyz_to_lab(rgb_to_xyz(rgb))
@@ -135,7 +138,7 @@ impl Lab {
     ///
     /// ```
     /// let lab = lab::Lab::from_rgba(&[240, 33, 95, 255]);
-    /// assert_eq!(lab::Lab { l: 52.33687, a: 75.5516, b: 19.99889 }, lab);
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
     /// ```
     pub fn from_rgba(rgba: &[u8; 4]) -> Self {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
@@ -176,7 +179,7 @@ impl Lab {
 mod tests {
     use super::Lab;
 
-    const PINK: Lab = Lab { l: 66.639084, a: 52.251457, b: 14.8606415 };
+    const PINK: Lab = Lab { l: 66.639084, a: 52.251457, b: 14.860654 };
 
     static COLOURS: [([u8; 3], Lab); 17] = [
         ([253, 120, 138], PINK),
@@ -193,14 +196,11 @@ mod tests {
         ([255,   0, 255], Lab { l: 60.32421, a: 98.23433, b: -60.824894 }),
         ([255, 255,   0], Lab { l: 97.13926, a: -21.553724, b: 94.47797 }),
 
-        // a and b in all of the below should be 0.0 but due to accumulation of
-        // rounding errors, we end up with some non-zero values.
         ([  0,   0,   0], Lab { l: 0.0, a: 0.0, b: 0.0 }),
-        ([ 64,  64,  64], Lab { l: 27.093414, a: 0.000014901161, b: 0.0 }),
+        ([ 64,  64,  64], Lab { l: 27.09341, a: 0.0, b: 0.0 }),
         ([127, 127, 127], Lab { l: 53.192772, a: 0.0, b: 0.0 }),
-        ([196, 196, 196], Lab { l: 79.15699, a: 0.0, b: 0.0 }),
+        ([196, 196, 196], Lab { l: 79.15698, a: 0.0, b: 0.0 }),
         ([255, 255, 255], Lab { l: 100.0, a: 0.0, b: 0.0 }),
-
     ];
 
     #[test]
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_distance() {
         let ugly_websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
-        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.68814);
+        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.68846);
     }
 
     #[test]
