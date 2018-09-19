@@ -11,10 +11,10 @@ pub struct Lab {
     pub b: f32,
 }
 
-fn rgb_to_xyz(rgb: [f32; 3]) -> [f32; 3] {
-    let r = rgb_to_xyz_map(rgb[0] / 255.0);
-    let g = rgb_to_xyz_map(rgb[1] / 255.0);
-    let b = rgb_to_xyz_map(rgb[2] / 255.0);
+fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
+    let r = rgb_to_xyz_map(rgb[0] as f32 / 255.0);
+    let g = rgb_to_xyz_map(rgb[1] as f32 / 255.0);
+    let b = rgb_to_xyz_map(rgb[2] as f32 / 255.0);
 
     [
         r*0.4124 + g*0.3576 + b*0.1805,
@@ -32,16 +32,16 @@ fn rgb_to_xyz_map(c: f32) -> f32 {
     }) * 100.0
 }
 
-fn xyz_to_lab(xyz: [f32; 3]) -> [f32; 3] {
+fn xyz_to_lab(xyz: [f32; 3]) -> Lab {
     let x = xyz_to_lab_map(xyz[0] / 95.047);
     let y = xyz_to_lab_map(xyz[1] / 100.0);
     let z = xyz_to_lab_map(xyz[2] / 108.883);
 
-    [
-        (116.0 * y) - 16.0,
-        500.0 * (x - y),
-        200.0 * (y - z),
-    ]
+    Lab {
+        l: (116.0 * y) - 16.0,
+        a: 500.0 * (x - y),
+        b: 200.0 * (y - z),
+    }
 }
 
 #[inline]
@@ -53,13 +53,10 @@ fn xyz_to_lab_map(c: f32) -> f32 {
     }
 }
 
-fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
-    let l = lab[0];
-    let a = lab[1];
-    let b = lab[2];
-    let fy = (l + 16.0) / 116.0;
-    let fx = (a / 500.0) + fy;
-    let fz = fy - (b / 200.0);
+fn lab_to_xyz(lab: &Lab) -> [f32; 3] {
+    let fy = (lab.l + 16.0) / 116.0;
+    let fx = (lab.a / 500.0) + fy;
+    let fz = fy - (lab.b / 200.0);
     let xr = {
         let raised = fx.powi(3);
         if raised > 0.008856 {
@@ -70,10 +67,10 @@ fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
     };
     let yr = {
         let raised = fy.powi(3);
-        if l > 0.008856 * 903.3 {
+        if lab.l > 0.008856 * 903.3 {
             raised
         } else {
-            l / 903.3
+            lab.l / 903.3
         }
     };
     let zr = {
@@ -92,25 +89,25 @@ fn lab_to_xyz(lab: [f32; 3]) -> [f32; 3] {
     ]
 }
 
-fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
+fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
     let x = xyz[0] / 100.0;
     let y = xyz[1] / 100.0;
     let z = xyz[2] / 100.0;
 
-    let r = xyz_to_rgb_map(x *  3.2406 + y * -1.5372 + z * -0.4986);
-    let g = xyz_to_rgb_map(x * -0.9689 + y *  1.8758 + z *  0.0415);
-    let b = xyz_to_rgb_map(x *  0.0557 + y * -0.2040 + z *  1.0570);
-
-    [r, g, b]
+    [
+        xyz_to_rgb_map(x *  3.2406 + y * -1.5372 + z * -0.4986),
+        xyz_to_rgb_map(x * -0.9689 + y *  1.8758 + z *  0.0415),
+        xyz_to_rgb_map(x *  0.0557 + y * -0.2040 + z *  1.0570),
+    ]
 }
 
 #[inline]
-fn xyz_to_rgb_map(c: f32) -> f32 {
-    (if c > 0.0031308 {
-        1.055 * c.powf(1.0/2.4) - 0.055
+fn xyz_to_rgb_map(c: f32) -> u8 {
+    ((if c > 0.0031308 {
+         1.055 * c.powf(1.0/2.4) - 0.055
     } else {
-        12.92 * c
-    }) * 255.0
+         12.92 * c
+    }) * 255.0).round().min(255.0).max(0.0) as u8
 }
 
 impl Lab {
@@ -123,13 +120,7 @@ impl Lab {
     /// assert_eq!(lab::Lab { l: 52.330193, a: 75.56704, b: 19.989174 }, lab);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
-        let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
-        let lab = xyz_to_lab(xyz);
-        Lab {
-            l: lab[0],
-            a: lab[1],
-            b: lab[2],
-        }
+        xyz_to_lab(rgb_to_xyz(rgb))
     }
 
     /// Constructs a new `Lab` from a four-element array of `u8`s
@@ -158,13 +149,7 @@ impl Lab {
     /// assert_eq!([240, 33, 95], rgb);
     /// ```
     pub fn to_rgb(&self) -> [u8; 3] {
-        let xyz = lab_to_xyz([self.l, self.a, self.b]);
-        let rgb = xyz_to_rgb(xyz);
-        [
-            rgb[0].round().min(255.).max(0.) as u8,
-            rgb[1].round().min(255.).max(0.) as u8,
-            rgb[2].round().min(255.).max(0.) as u8,
-        ]
+        xyz_to_rgb(lab_to_xyz(&self))
     }
 
     /// Measures the perceptual distance between the colors of one `Lab`
