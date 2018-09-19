@@ -11,6 +11,13 @@ pub struct Lab {
     pub b: f32,
 }
 
+// κ and ε parameters used in conversion between XYZ and La*b*.  See
+// http://www.brucelindbloom.com/LContinuity.html for explanation as to why
+// those are different values than those provided by CIE standard.
+const KAPPA: f32 = 24389.0 / 27.0;
+const EPSILON: f32 = 216.0 / 24389.0;
+const CBRT_EPSILON: f32 = 0.20689655172413796;
+
 fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
     let r = rgb_to_xyz_map(rgb[0] as f32 / 255.0);
     let g = rgb_to_xyz_map(rgb[1] as f32 / 255.0);
@@ -46,10 +53,10 @@ fn xyz_to_lab(xyz: [f32; 3]) -> Lab {
 
 #[inline]
 fn xyz_to_lab_map(c: f32) -> f32 {
-    if c > 0.008856 {
+    if c > EPSILON {
         c.powf(1.0/3.0)
     } else {
-        (c * 7.787) + ( 16.0 / 116.0 )
+        (KAPPA * c + 16.0) / 116.0
     }
 }
 
@@ -57,29 +64,20 @@ fn lab_to_xyz(lab: &Lab) -> [f32; 3] {
     let fy = (lab.l + 16.0) / 116.0;
     let fx = (lab.a / 500.0) + fy;
     let fz = fy - (lab.b / 200.0);
-    let xr = {
-        let raised = fx.powi(3);
-        if raised > 0.008856 {
-            raised
-        } else {
-            ((fx * 116.0) - 16.0) / 903.3
-        }
+    let xr = if fx > CBRT_EPSILON {
+        fx.powi(3)
+    } else {
+        ((fx * 116.0) - 16.0) / KAPPA
     };
-    let yr = {
-        let raised = fy.powi(3);
-        if lab.l > 0.008856 * 903.3 {
-            raised
-        } else {
-            lab.l / 903.3
-        }
+    let yr = if lab.l > EPSILON * KAPPA {
+        fy.powi(3)
+    } else {
+        lab.l / KAPPA
     };
-    let zr = {
-        let raised = fz.powi(3);
-        if raised > 0.008856 {
-            raised
-        } else {
-            ((fz * 116.0) - 16.0) / 903.3
-        }
+    let zr = if fz > CBRT_EPSILON {
+        fz.powi(3)
+    } else {
+        ((fz * 116.0) - 16.0) / KAPPA
     };
 
     [
@@ -183,7 +181,7 @@ mod tests {
     static COLOURS: [([u8; 3], Lab); 17] = [
         ([253, 120, 138], PINK),
 
-        ([127,   0,   0], Lab { l: 25.301395, a: 47.77433, b: 37.75405 }),
+        ([127,   0,   0], Lab { l: 25.301395, a: 47.77433, b: 37.754025 }),
         ([  0, 127,   0], Lab { l: 45.87666, a: -51.40707, b: 49.615574 }),
         ([  0,   0, 127], Lab { l: 12.808655, a: 47.23452, b: -64.33745 }),
         ([  0, 127, 127], Lab { l: 47.8919, a: -28.683678, b: -8.42911 }),
