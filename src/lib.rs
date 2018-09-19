@@ -15,11 +15,7 @@ extern crate lazy_static;
 extern crate rand;
 
 #[cfg(target_arch = "x86_64")]
-mod avx;
-#[cfg(target_arch = "x86_64")]
-pub use avx::rgbs_to_labs as rgbs_to_labs_avx;
-#[cfg(target_arch = "x86_64")]
-pub use avx::labs_to_rgbs as labs_to_rgbs_avx;
+pub mod avx;
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
@@ -146,7 +142,7 @@ impl Lab {
         #[cfg(target_arch = "x86_64")]
         {
             if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-                return unsafe { rgbs_to_labs_avx(rgbs) };
+                return unsafe { avx::rgbs_to_labs(rgbs) };
             }
         }
         rgbs_to_labs(rgbs)
@@ -156,7 +152,7 @@ impl Lab {
         #[cfg(target_arch = "x86_64")]
         {
             if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-                return unsafe { labs_to_rgbs_avx(labs) };
+                return unsafe { avx::labs_to_rgbs(labs) };
             }
         }
         labs_to_rgbs(labs)

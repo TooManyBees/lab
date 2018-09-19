@@ -26,7 +26,7 @@ fn labs_to_rgbs(c: &mut Criterion) {
 
 fn labs_to_rgbs_avx(c: &mut Criterion) {
     c.bench_function("labs_to_rgbs_avx", move |b| {
-        b.iter(|| unsafe { lab::labs_to_rgbs_avx(&LABS) })
+        b.iter(|| unsafe { lab::avx::labs_to_rgbs(&LABS) })
     });
 }
 
