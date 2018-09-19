@@ -119,9 +119,8 @@ impl Lab {
     /// # Examples
     ///
     /// ```
-    /// # use lab::Lab;
-    /// let lab = Lab::from_rgb(&[240, 33, 95]);
-    /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// let lab = lab::Lab::from_rgb(&[240, 33, 95]);
+    /// assert_eq!(lab::Lab { l: 52.330193, a: 75.56704, b: 19.989174 }, lab);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
         let xyz = rgb_to_xyz([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
@@ -142,15 +141,22 @@ impl Lab {
     /// # Examples
     ///
     /// ```
-    /// # use lab::Lab;
-    /// let lab = Lab::from_rgba(&[240, 33, 95, 255]);
-    /// // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+    /// let lab = lab::Lab::from_rgba(&[240, 33, 95, 255]);
+    /// assert_eq!(lab::Lab { l: 52.330193, a: 75.56704, b: 19.989174 }, lab);
     /// ```
     pub fn from_rgba(rgba: &[u8; 4]) -> Self {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
     }
 
     /// Returns the `Lab`'s color in RGB, in a 3-element array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lab = lab::Lab { l: 52.330193, a: 75.56704, b: 19.989174 };
+    /// let rgb = lab.to_rgb();
+    /// assert_eq!([240, 33, 95], rgb);
+    /// ```
     pub fn to_rgb(&self) -> [u8; 3] {
         let xyz = lab_to_xyz([self.l, self.a, self.b]);
         let rgb = xyz_to_rgb(xyz);
@@ -170,8 +176,7 @@ impl Lab {
     /// # use lab::Lab;
     /// let pink = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
     /// let websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
-    /// let dist = pink.squared_distance(&websafe_pink);
-    /// // 254.23636
+    /// assert_eq!(254.23636, pink.squared_distance(&websafe_pink));
     /// ```
     pub fn squared_distance(&self, other: &Lab) -> f32 {
         (self.l - other.l).powi(2) +
@@ -186,21 +191,44 @@ mod tests {
 
     const PINK: Lab = Lab { l: 66.6348, a: 52.260696, b: 14.850557 };
 
+    static COLOURS: [([u8; 3], Lab); 17] = [
+        ([253, 120, 138], PINK),
+
+        ([127,   0,   0], Lab { l: 25.29668, a: 47.78436, b: 37.75621 }),
+        ([  0, 127,   0], Lab { l: 45.878044, a: -51.40823, b: 49.616688 }),
+        ([  0,   0, 127], Lab { l: 12.811981, a: 47.239967, b: -64.33954 }),
+        ([  0, 127, 127], Lab { l: 47.893875, a: -28.678999, b: -8.433235 }),
+        ([127,   0, 127], Lab { l: 29.524033, a: 58.60761, b: -36.292194 }),
+        ([255,   0,   0], Lab { l: 53.23288, a: 80.10936, b: 67.22006 }),
+        ([  0, 255,   0], Lab { l: 87.73704, a: -86.184654, b: 83.181175 }),
+        ([  0,   0, 255], Lab { l: 32.302586, a: 79.19668, b: -107.863686 }),
+        ([  0, 255, 255], Lab { l: 91.11652, a: -48.07961, b: -14.138126 }),
+        ([255,   0, 255], Lab { l: 60.31993, a: 98.254234, b: -60.84299 }),
+        ([255, 255,   0], Lab { l: 97.138245, a: -21.5559, b: 94.48248 }),
+
+        // a and b in all of the below should be 0.0 but due to accumulation of
+        // rounding errors, we end up with some non-zero values.
+        ([  0,   0,   0], Lab { l: 0.0, a: 0.0, b: 0.0 }),
+        ([ 64,  64,  64], Lab { l: 27.093414, a: 0.0019669533, b: -0.0038683414 }),
+        ([127, 127, 127], Lab { l: 53.192772, a: 0.0031292439, b: -0.006210804 }),
+        ([196, 196, 196], Lab { l: 79.15699, a: 0.0043213367, b: -0.008535385 }),
+        ([255, 255, 255], Lab { l: 100.0, a: 0.0052452087, b: -0.010418892 }),
+    ];
+
     #[test]
     fn test_from_rgb() {
-        let rgb: [u8; 3] = [253, 120, 138];
-        assert_eq!(
-            Lab::from_rgb(&rgb),
-            PINK
-        );
+        for test in COLOURS.iter() {
+            assert_eq!(test.1, Lab::from_rgb(&test.0));
+            assert_eq!(test.1,
+                       Lab::from_rgba(&[test.0[0], test.0[1], test.0[2], 255]));
+        }
     }
 
     #[test]
     fn test_to_rgb() {
-        assert_eq!(
-            PINK.to_rgb(),
-            [253, 120, 138]
-        );
+        for test in COLOURS.iter() {
+            assert_eq!(test.0, test.1.to_rgb());
+        }
     }
 
     #[test]
