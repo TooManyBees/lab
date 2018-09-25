@@ -11,7 +11,7 @@ use self::rand::Rng;
 const BENCH_LENGTH: usize = 200;
 #[bench]
 fn convert_rgb_to_lab(b: &mut Bencher) {
-    let rand_seed: &[_] = &[1, 2, 3, 4];
+    let rand_seed = [0u8; 32];
     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
     let mut rgbs = Vec::with_capacity(BENCH_LENGTH);
     for _ in 0..BENCH_LENGTH {
