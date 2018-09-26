@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-version = "0.4.4" # bump html_root_url attribute in lib.rs
+version = "0.5.0" # bump html_root_url attribute in lib.rs
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and
@@ -15,4 +15,4 @@ categories = ["multimedia::images", "multimedia::video"]
 license = "MIT"
 
 [dev-dependencies]
-rand = { version = "0.3" } # used for benchmark tests
+rand = "0.5" # used for benchmark tests

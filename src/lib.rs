@@ -2,7 +2,7 @@
 //!
 //! Tools for converting RGB colors to L\*a\*b\* measurements.
 
-#![doc(html_root_url = "https://docs.rs/lab/0.4.4")]
+#![doc(html_root_url = "https://docs.rs/lab/0.5.0")]
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
