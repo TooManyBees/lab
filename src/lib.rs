@@ -4,6 +4,8 @@
 
 #![doc(html_root_url = "https://docs.rs/lab/0.5.0")]
 
+#[cfg(test)] #[macro_use] extern crate approx;
+
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
     pub l: f32,
@@ -181,6 +183,53 @@ impl Lab {
 }
 
 #[cfg(test)]
+impl approx::AbsDiffEq for Lab {
+    type Epsilon = f32;
+
+    #[inline]
+    fn default_epsilon() -> f32 {
+        std::f32::EPSILON
+    }
+
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: f32) -> bool {
+        f32::abs_diff_eq(&self.l, &other.l, epsilon) &&
+        f32::abs_diff_eq(&self.a, &other.a, epsilon) &&
+        f32::abs_diff_eq(&self.b, &other.b, epsilon)
+    }
+}
+
+#[cfg(test)]
+impl approx::RelativeEq for Lab {
+    #[inline]
+    fn default_max_relative() -> f32 {
+        std::f32::EPSILON
+    }
+
+    #[inline]
+    fn relative_eq(&self, other: &Self, epsilon: f32, max_relative: f32) -> bool {
+        f32::relative_eq(&self.l, &other.l, epsilon, max_relative) &&
+        f32::relative_eq(&self.a, &other.a, epsilon, max_relative) &&
+        f32::relative_eq(&self.b, &other.b, epsilon, max_relative)
+    }
+}
+
+#[cfg(test)]
+impl approx::UlpsEq for Lab {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        4
+    }
+
+    #[inline]
+    fn ulps_eq(&self, other: &Self, epsilon: f32, max_ulps: u32) -> bool {
+        f32::ulps_eq(&self.l, &other.l, epsilon, max_ulps) &&
+        f32::ulps_eq(&self.a, &other.a, epsilon, max_ulps) &&
+        f32::ulps_eq(&self.b, &other.b, epsilon, max_ulps)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::Lab;
 
@@ -189,9 +238,10 @@ mod tests {
     #[test]
     fn test_from_rgb() {
         let rgb: [u8; 3] = [253, 120, 138];
-        assert_eq!(
+        assert_relative_eq!(
             Lab::from_rgb(&rgb),
-            PINK
+            PINK,
+            epsilon = 0.00005
         );
     }
 

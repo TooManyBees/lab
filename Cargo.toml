@@ -16,3 +16,4 @@ license = "MIT"
 
 [dev-dependencies]
 rand = "0.5" # used for benchmark tests
+approx = "0.3"
