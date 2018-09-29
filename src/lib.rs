@@ -27,9 +27,9 @@ pub struct Lab {
 // κ and ε parameters used in conversion between XYZ and La*b*.  See
 // http://www.brucelindbloom.com/LContinuity.html for explanation as to why
 // those are different values than those provided by CIE standard.
-const KAPPA: f32 = 24389.0 / 27.0;
-const EPSILON: f32 = 216.0 / 24389.0;
-const CBRT_EPSILON: f32 = 0.20689655172413796;
+pub(crate) const KAPPA: f32 = 24389.0 / 27.0;
+pub(crate) const EPSILON: f32 = 216.0 / 24389.0;
+pub(crate) const CBRT_EPSILON: f32 = 0.20689655172413796;
 
 fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
     let r = rgb_to_xyz_map(rgb[0]);

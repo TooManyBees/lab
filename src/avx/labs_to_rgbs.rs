@@ -1,6 +1,6 @@
 use std::arch::x86_64::*;
 use std::{mem, f32};
-use super::Lab;
+use super::{Lab, KAPPA, EPSILON, CBRT_EPSILON};
 
 #[allow(dead_code)]
 pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
@@ -10,7 +10,7 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
                 let (l, a, b) = lab_slice_to_simd(packed);
                 let (x, y, z) = labs_to_xyzs(l, a, b);
                 let (r, g, b) = xyzs_to_rgbs(x, y, z);
-                let (r, g, b) = normalize_unit_to_short(r, g, b);
+                // let (r, g, b) = normalize_f32_to_short(r, g, b);
                 simd_to_rgb_vec(r, g, b)
             },
             rest => {
@@ -23,7 +23,7 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
                 let (l, a, b) = lab_slice_to_simd(&labs);
                 let (x, y, z) = labs_to_xyzs(l, a, b);
                 let (r, g, b) = xyzs_to_rgbs(x, y, z);
-                let (r, g, b) = normalize_unit_to_short(r, g, b);
+                // let (r, g, b) = normalize_f32_to_short(r, g, b);
                 let mut labs = simd_to_rgb_vec(r, g, b);
                 labs.truncate(rest.len());
                 labs
@@ -35,18 +35,10 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
 }
 
 unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
-    assert_eq!(labs.len(), 8);
-    let lab0 = labs.get_unchecked(0);
-    let lab1 = labs.get_unchecked(1);
-    let lab2 = labs.get_unchecked(2);
-    let lab3 = labs.get_unchecked(3);
-    let lab4 = labs.get_unchecked(4);
-    let lab5 = labs.get_unchecked(5);
-    let lab6 = labs.get_unchecked(6);
-    let lab7 = labs.get_unchecked(7);
-    let l = _mm256_set_ps(lab0.l, lab1.l, lab2.l, lab3.l, lab4.l, lab5.l, lab6.l, lab7.l);
-    let a = _mm256_set_ps(lab0.a, lab1.a, lab2.a, lab3.a, lab4.a, lab5.a, lab6.a, lab7.a);
-    let b = _mm256_set_ps(lab0.b, lab1.b, lab2.b, lab3.b, lab4.b, lab5.b, lab6.b, lab7.b);
+    let labs = &labs[..8];
+    let l = _mm256_set_ps(labs[0].l, labs[1].l, labs[2].l, labs[3].l, labs[4].l, labs[5].l, labs[6].l, labs[7].l);
+    let a = _mm256_set_ps(labs[0].a, labs[1].a, labs[2].a, labs[3].a, labs[4].a, labs[5].a, labs[6].a, labs[7].a);
+    let b = _mm256_set_ps(labs[0].b, labs[1].b, labs[2].b, labs[3].b, labs[4].b, labs[5].b, labs[6].b, labs[7].b);
     (l, a, b)
 }
 
@@ -59,14 +51,13 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
         let false_branch = {
             let temp1 = _mm256_mul_ps(fx, _mm256_set1_ps(116.0));
             let temp2 = _mm256_sub_ps(temp1, _mm256_set1_ps(16.0));
-            _mm256_div_ps(temp2, _mm256_set1_ps(903.3))
+            _mm256_div_ps(temp2, _mm256_set1_ps(KAPPA))
         };
         let unpacked_false_branch: [f32; 8] = mem::transmute(false_branch);
         let mut unpacked: [f32; 8] = mem::transmute(fx);
         for (i, el) in unpacked.iter_mut().enumerate() {
-            let raised = el.powi(3);
-            if raised > 0.008856 {
-                *el = raised;
+            if *el > CBRT_EPSILON {
+                *el = el.powi(3);
             } else {
                 *el = unpacked_false_branch[i];
             }
@@ -75,30 +66,13 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
     };
 
     let yr = {
-        let false_branch = _mm256_div_ps(l, _mm256_set1_ps(903.3));
-        let true_branch = {
-            let mut unpacked: [f32; 8] = mem::transmute(fy);
-            for el in unpacked.iter_mut() {
-                *el = el.powi(3);
-            }
-            mem::transmute(unpacked)
-        };
-        let mask = _mm256_cmp_ps(l, _mm256_set1_ps(0.008856 * 903.3), _CMP_GT_OQ);
-        _mm256_blendv_ps(false_branch, true_branch, mask)
-    };
-
-    let zr = {
-        let false_branch = {
-            let temp1 = _mm256_mul_ps(fz, _mm256_set1_ps(116.0));
-            let temp2 = _mm256_sub_ps(temp1, _mm256_set1_ps(16.0));
-            _mm256_div_ps(temp2, _mm256_set1_ps(903.3))
-        };
+        let false_branch = _mm256_div_ps(l, _mm256_set1_ps(KAPPA));
         let unpacked_false_branch: [f32; 8] = mem::transmute(false_branch);
-        let mut unpacked: [f32; 8] = mem::transmute(fz);
+        let unpacked_fy: [f32; 8] = mem::transmute(fy);
+        let mut unpacked: [f32; 8] = mem::transmute(l);
         for (i, el) in unpacked.iter_mut().enumerate() {
-            let raised = el.powi(3);
-            if raised > 0.008856 {
-                *el = raised;
+            if *el > EPSILON * KAPPA {
+                *el = unpacked_fy[i].powi(3);
             } else {
                 *el = unpacked_false_branch[i];
             }
@@ -106,37 +80,50 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
         mem::transmute(unpacked)
     };
 
-    let x = _mm256_mul_ps(xr, _mm256_set1_ps(95.047));
-    let y = _mm256_mul_ps(yr, _mm256_set1_ps(100.0));
-    let z = _mm256_mul_ps(zr, _mm256_set1_ps(108.883));
+    let zr = {
+        let false_branch = {
+            let temp1 = _mm256_mul_ps(fz, _mm256_set1_ps(116.0));
+            let temp2 = _mm256_sub_ps(temp1, _mm256_set1_ps(16.0));
+            _mm256_div_ps(temp2, _mm256_set1_ps(KAPPA))
+        };
+        let unpacked_false_branch: [f32; 8] = mem::transmute(false_branch);
+        let mut unpacked: [f32; 8] = mem::transmute(fz);
+        for (i, el) in unpacked.iter_mut().enumerate() {
+            if *el > CBRT_EPSILON {
+                *el = el.powi(3);
+            } else {
+                *el = unpacked_false_branch[i];
+            }
+        }
+        mem::transmute(unpacked)
+    };
 
-    (x, y, z)
+    (
+        _mm256_mul_ps(xr, _mm256_set1_ps(0.95047)),
+        yr,
+        _mm256_mul_ps(zr, _mm256_set1_ps(1.08883)),
+    )
 }
 
 unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
-    let divisor = _mm256_set1_ps(100.0);
-    let x = _mm256_div_ps(x, divisor);
-    let y = _mm256_div_ps(y, divisor);
-    let z = _mm256_div_ps(z, divisor);
-
     let r = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.2406));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-1.5372));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(-0.4986));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.2404541621141054));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-1.5371385127977166));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(-0.4985314095560162));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
     let g = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(-0.9689));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(1.8758));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(0.0415));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(-0.9692660305051868));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(1.8760108454466942));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(0.04155601753034984));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
     let b = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(0.0557));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-0.2040));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(1.0570));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(0.05564343095911469));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-0.20402591351675387));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(1.0572251882231791));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
@@ -147,17 +134,18 @@ unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 #[inline]
 unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
+    let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
         let mut unpacked: [f32; 8] = mem::transmute(c);
         for el in unpacked.iter_mut() {
             *el = el.powf(1.0 / 2.4);
         }
-        let temp1: __m256 = mem::transmute(unpacked);
-        let temp2 = _mm256_mul_ps(temp1, _mm256_set1_ps(1.055));
+        let raised: __m256 = mem::transmute(unpacked);
+        let temp2 = _mm256_mul_ps(raised, _mm256_set1_ps(1.055));
         _mm256_sub_ps(temp2, _mm256_set1_ps(0.055))
     };
-    let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
-    _mm256_blendv_ps(false_branch, true_branch, mask)
+    let blended = _mm256_blendv_ps(false_branch, true_branch, mask);
+    _mm256_mul_ps(blended, _mm256_set1_ps(255.0))
 }
 
 unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
@@ -167,23 +155,21 @@ unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
     r.iter().zip(g.iter()).zip(b.iter()).map(|((&r, &g), &b)| [r as u8, g as u8, b as u8]).rev().collect()
 }
 
-#[inline]
-unsafe fn normalize_unit_to_short(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
-    let normalizer = _mm256_set1_ps(255.0);
-    let r = _mm256_mul_ps(r, normalizer);
-    let g = _mm256_mul_ps(g, normalizer);
-    let b = _mm256_mul_ps(b, normalizer);
-    (r, g, b)
-}
+// #[inline]
+// unsafe fn normalize_f32_to_short(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
+//     let normalizer = _mm256_set1_ps(255.0);
+//     let r = _mm256_mul_ps(r, normalizer);
+//     let g = _mm256_mul_ps(g, normalizer);
+//     let b = _mm256_mul_ps(b, normalizer);
+//     (r, g, b)
+// }
 
 #[cfg(all(test, target_feature = "avx", target_feature = "sse4.1"))]
 mod test {
     use rand;
     use rand::Rng;
     use rand::distributions::Standard;
-    use super::rgbs_to_labs as rgbs_to_labs_avx;
-    use super::labs_to_rgbs as labs_to_rgbs_avx;
-    use super::super::{Lab, rgbs_to_labs, labs_to_rgbs};
+    use super::super::super::{Lab, rgbs_to_labs, labs_to_rgbs, avx};
 
     lazy_static! {
         static ref RGBS: Vec<[u8;3]> = {
@@ -194,44 +180,9 @@ mod test {
     }
 
     #[test]
-    fn test_avx_rgbs_to_labs() {
-        let rgbs = vec![
-            [253, 120, 138], // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
-            [25, 20, 22],    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
-            [63, 81, 181],   // Lab { l: 38.336494, a: 25.586218, b: -55.288517 }
-            [21, 132, 102],  // Lab { l: 49.033485, a: -36.959187, b: 7.9363704 }
-            [255, 193, 7],   // Lab { l: 81.519325, a: 9.4045105, b: 82.69791 }
-            [233, 30, 99],   // Lab { l: 50.865776, a: 74.61989, b: 15.343171 }
-            [155, 96, 132],  // Lab { l: 48.260345, a: 29.383003, b: -9.950054 }
-            [249, 165, 33],  // Lab { l: 74.29188, a: 21.827251, b: 72.75864 }
-        ];
-
-        let labs_non_avx = rgbs_to_labs(&rgbs);
-        let labs_avx = unsafe { rgbs_to_labs_avx(&rgbs) };
-        assert_eq!(labs_avx, labs_non_avx);
-    }
-
-    #[test]
-    fn test_avx_rgbs_to_labs_many() {
-        let labs_non_avx = rgbs_to_labs(&RGBS);
-        let labs_avx = unsafe { rgbs_to_labs_avx(&RGBS) };
-        assert_eq!(labs_avx, labs_non_avx);
-    }
-
-    #[test]
-    fn test_avx_rgbs_to_labs_unsaturated() {
-        let rgbs = vec![
-            [253, 120, 138],
-        ];
-        let labs_non_avx = rgbs_to_labs(&rgbs);
-        let labs_avx = unsafe { rgbs_to_labs_avx(&rgbs) };
-        assert_eq!(labs_avx, labs_non_avx);
-    }
-
-    #[test]
     fn test_avx_labs_to_rgbs() {
-        let labs = unsafe { rgbs_to_labs_avx(&RGBS) };
-        let rgbs = unsafe { labs_to_rgbs_avx(&labs) };
+        let labs = unsafe { avx::rgbs_to_labs(&RGBS) };
+        let rgbs = unsafe { avx::labs_to_rgbs(&labs) };
         assert_eq!(rgbs.as_slice(), RGBS.as_slice());
     }
 
@@ -241,7 +192,7 @@ mod test {
             Lab { l: 66.6348, a: 52.260696, b: 14.850557 },
         ];
         let rgbs_non_avx = labs_to_rgbs(&labs);
-        let rgbs_avx = unsafe { labs_to_rgbs_avx(&labs) };
+        let rgbs_avx = unsafe { avx::labs_to_rgbs(&labs) };
         assert_eq!(rgbs_avx, rgbs_non_avx);
     }
 }

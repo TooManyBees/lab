@@ -17,12 +17,12 @@ lazy_static! {
     };
 }
 
-fn rgb_to_lab(c: &mut Criterion) {
-    let rgb = RGBS[0];
-    c.bench_function("rgb_to_lab", move |b| {
-        b.iter(|| lab::Lab::from_rgb(&rgb))
-    });
-}
+// fn rgb_to_lab(c: &mut Criterion) {
+//     let rgb = RGBS[0];
+//     c.bench_function("rgb_to_lab", move |b| {
+//         b.iter(|| lab::Lab::from_rgb(&rgb))
+//     });
+// }
 
 fn rgbs_to_labs(c: &mut Criterion) {
     c.bench_function("rgbs_to_labs", move |b| {
