@@ -139,8 +139,13 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
         let mut unpacked: [f32; 8] = mem::transmute(c);
-        for el in unpacked.iter_mut() {
-            *el = el.powf(1.0 / 2.4);
+        let unpacked_mask: [f32; 8] = mem::transmute(mask);
+        // Avoid `powf` at all costs by only operating on the elements that
+        // will make it through the mask. `powf` is a significant performance hit
+        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
+            if test.is_nan() { // NaN == true, 0.0 == false
+                *el = el.powf(1.0 / 2.4);
+            }
         }
         let raised: __m256 = mem::transmute(unpacked);
         let temp2 = _mm256_mul_ps(raised, _mm256_set1_ps(1.055));
