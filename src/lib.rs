@@ -150,12 +150,14 @@ impl Lab {
     }
 
     pub fn to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-        #[cfg(target_arch = "x86_64")]
-        {
-            if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-                return unsafe { avx::labs_to_rgbs(labs) };
-            }
-        }
+        // Currently, SIMD code performs equal to or worse than scalar code
+
+        // #[cfg(target_arch = "x86_64")]
+        // {
+        //     if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+        //         return unsafe { avx::labs_to_rgbs(labs) };
+        //     }
+        // }
         labs_to_rgbs(labs)
     }
 
