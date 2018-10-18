@@ -8,13 +8,12 @@
 #[macro_use]
 extern crate pretty_assertions;
 #[cfg(test)]
-#[allow(unused_imports)]
 #[macro_use]
 extern crate lazy_static;
 #[cfg(test)]
 extern crate rand;
 
-#[cfg(target_arch = "x86_64")]
+// #[cfg(target_arch = "x86_64")]
 pub mod avx;
 
 #[derive(Debug, PartialEq, Copy, Clone, Default)]

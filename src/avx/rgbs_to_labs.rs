@@ -1,27 +1,23 @@
 use std::arch::x86_64::*;
-use std::{mem, f32};
+use std::{iter, mem, f32};
 use super::{Lab, KAPPA, EPSILON};
 
-#[allow(dead_code)]
+static BLANK_RGB: [f32; 3] = [f32::NAN; 3];
+
 pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     rgbs.chunks(8).fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
         let labs = match rgbs {
             rgbs @ &[_, _, _, _, _, _, _, _] => {
                 let (r, g, b) = rgb_slice_to_simd(rgbs);
                 let (r, g, b) = uint_to_f32(r, g, b);
-                let (x, y, z) = rgbs_to_xyzs(r, g, b);
-                let (l, a, b) = xyzs_to_labs(x, y, z);
-                simd_to_lab_vec(l, a, b)
+                simd_rgbs_to_vec_labs(r, g, b)
             },
             rest => {
-                let mut rgbs: Vec<[f32; 3]> = Vec::with_capacity(8);
-                for rgb in rest.iter() {
-                    rgbs.push([rgb[0] as f32, rgb[1] as f32, rgb[2] as f32]);
-                }
-                let num_padding = 8 - rest.len();
-                for _ in 0..num_padding {
-                    rgbs.push([f32::NAN; 3]);
-                }
+                let rgbs: Vec<[f32; 3]> =
+                    rest.iter().map(|rgb: &[u8; 3]| [rgb[0] as f32, rgb[1] as f32, rgb[2] as f32])
+                    .chain(iter::repeat(BLANK_RGB))
+                    .take(8)
+                    .collect();
                 let (r, g, b) = {
                     let rgbs = &rgbs[..8];
                     (
@@ -30,9 +26,7 @@ pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
                         _mm256_set_ps(rgbs[0][2], rgbs[1][2], rgbs[2][2], rgbs[3][2], rgbs[4][2], rgbs[5][2], rgbs[6][2], rgbs[7][2]),
                     )
                 };
-                let (x, y, z) = rgbs_to_xyzs(r, g, b);
-                let (l, a, b) = xyzs_to_labs(x, y, z);
-                let mut labs = simd_to_lab_vec(l, a, b);
+                let mut labs = simd_rgbs_to_vec_labs(r, g, b);
                 labs.truncate(rest.len());
                 labs
             },
@@ -40,6 +34,12 @@ pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
         v.extend_from_slice(&labs);
         v
     })
+}
+
+unsafe fn simd_rgbs_to_vec_labs(r: __m256, g: __m256, b: __m256) -> Vec<Lab> {
+    let (x, y, z) = rgbs_to_xyzs(r, g, b);
+    let (l, a, b) = xyzs_to_labs(x, y, z);
+    simd_to_lab_vec(l, a, b)
 }
 
 #[inline]
@@ -52,8 +52,6 @@ unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256i, __m256i, __m256i) {
 }
 
 unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
-    // let (r, g, b) = clamp(r, g, b);
-
     let r = rgbs_to_xyzs_map(r);
     let g = rgbs_to_xyzs_map(g);
     let b = rgbs_to_xyzs_map(b);
@@ -173,12 +171,13 @@ unsafe fn simd_to_lab_vec(l: __m256, a: __m256, b: __m256) -> Vec<Lab> {
 //     (r, g, b)
 // }
 
-#[cfg(all(test, target_feature = "avx", target_feature = "sse4.1"))]
+// #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]
+#[cfg(test)]
 mod test {
     use rand;
     use rand::Rng;
     use rand::distributions::Standard;
-    use super::super::super::{Lab, rgbs_to_labs, labs_to_rgbs, avx};
+    use super::super::super::{rgbs_to_labs, avx};
 
     lazy_static! {
         static ref RGBS: Vec<[u8;3]> = {

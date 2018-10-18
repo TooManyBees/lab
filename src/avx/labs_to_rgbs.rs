@@ -1,32 +1,24 @@
 use std::arch::x86_64::*;
-use std::{mem, f32};
+use std::{iter, mem, f32};
 use super::{Lab, KAPPA, EPSILON, CBRT_EPSILON};
 
-#[allow(dead_code)]
+static BLANK_LAB: Lab = Lab { l: f32::NAN, a: f32::NAN, b: f32::NAN };
+
 pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     labs.chunks(8).fold(Vec::with_capacity(labs.len()), |mut v, labs| {
         let rgbs: Vec<_> = match labs {
             packed @ &[_, _, _, _, _, _, _, _] => {
-                let (l, a, b) = lab_slice_to_simd(packed);
-                let (x, y, z) = labs_to_xyzs(l, a, b);
-                let (r, g, b) = xyzs_to_rgbs(x, y, z);
-                // let (r, g, b) = normalize_f32_to_short(r, g, b);
-                simd_to_rgb_vec(r, g, b)
+                vec_labs_to_vec_rgbs(packed)
             },
             rest => {
-                let mut labs: Vec<Lab> = Vec::with_capacity(8);
-                labs.extend_from_slice(&rest);
-                let num_padding = 8 - rest.len();
-                for _ in 0..num_padding {
-                    labs.push(Lab { l: f32::NAN, a: f32::NAN, b: f32::NAN });
-                }
-                let (l, a, b) = lab_slice_to_simd(&labs);
-                let (x, y, z) = labs_to_xyzs(l, a, b);
-                let (r, g, b) = xyzs_to_rgbs(x, y, z);
-                // let (r, g, b) = normalize_f32_to_short(r, g, b);
-                let mut labs = simd_to_rgb_vec(r, g, b);
-                labs.truncate(rest.len());
-                labs
+                let labs: Vec<Lab> =
+                    rest.iter().cloned().chain(iter::repeat(BLANK_LAB))
+                    .take(8)
+                    .collect();
+
+                let mut rgbs = vec_labs_to_vec_rgbs(&labs);
+                rgbs.truncate(rest.len());
+                rgbs
             },
         };
         v.extend_from_slice(&rgbs);
@@ -34,6 +26,14 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     })
 }
 
+unsafe fn vec_labs_to_vec_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+    let (l, a, b) = lab_slice_to_simd(labs);
+    let (x, y, z) = labs_to_xyzs(l, a, b);
+    let (r, g, b) = xyzs_to_rgbs(x, y, z);
+    simd_to_rgb_vec(r, g, b)
+}
+
+#[inline]
 unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
     let labs = &labs[..8];
     let l = _mm256_set_ps(labs[0].l, labs[1].l, labs[2].l, labs[3].l, labs[4].l, labs[5].l, labs[6].l, labs[7].l);
@@ -42,6 +42,7 @@ unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
     (l, a, b)
 }
 
+#[inline]
 unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m256) {
     let fy = _mm256_div_ps(_mm256_add_ps(l, _mm256_set1_ps(16.0)), _mm256_set1_ps(116.0));
     let fx = _mm256_add_ps(_mm256_div_ps(a, _mm256_set1_ps(500.0)), fy);
@@ -105,6 +106,7 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
     )
 }
 
+#[inline]
 unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
     let r = {
         let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.2404541621141054));
@@ -148,6 +150,7 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
     _mm256_mul_ps(blended, _mm256_set1_ps(255.0))
 }
 
+#[inline]
 unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
     let r: [f32; 8] = mem::transmute(_mm256_round_ps(r, _MM_FROUND_TO_NEAREST_INT));
     let g: [f32; 8] = mem::transmute(_mm256_round_ps(g, _MM_FROUND_TO_NEAREST_INT));
@@ -155,21 +158,13 @@ unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
     r.iter().zip(g.iter()).zip(b.iter()).map(|((&r, &g), &b)| [r as u8, g as u8, b as u8]).rev().collect()
 }
 
-// #[inline]
-// unsafe fn normalize_f32_to_short(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
-//     let normalizer = _mm256_set1_ps(255.0);
-//     let r = _mm256_mul_ps(r, normalizer);
-//     let g = _mm256_mul_ps(g, normalizer);
-//     let b = _mm256_mul_ps(b, normalizer);
-//     (r, g, b)
-// }
-
-#[cfg(all(test, target_feature = "avx", target_feature = "sse4.1"))]
+// #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]
+#[cfg(test)]
 mod test {
     use rand;
     use rand::Rng;
     use rand::distributions::Standard;
-    use super::super::super::{Lab, rgbs_to_labs, labs_to_rgbs, avx};
+    use super::super::super::{Lab, labs_to_rgbs, avx};
 
     lazy_static! {
         static ref RGBS: Vec<[u8;3]> = {
