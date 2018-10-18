@@ -169,7 +169,7 @@ mod test {
     use rand;
     use rand::Rng;
     use rand::distributions::Standard;
-    use super::super::super::{Lab, labs_to_rgbs, avx};
+    use super::super::super::{Lab, labs_to_rgbs, simd};
 
     lazy_static! {
         static ref RGBS: Vec<[u8;3]> = {
@@ -180,19 +180,19 @@ mod test {
     }
 
     #[test]
-    fn test_avx_labs_to_rgbs() {
-        let labs = unsafe { avx::rgbs_to_labs(&RGBS) };
-        let rgbs = unsafe { avx::labs_to_rgbs(&labs) };
+    fn test_simd_labs_to_rgbs() {
+        let labs = unsafe { simd::rgbs_to_labs(&RGBS) };
+        let rgbs = unsafe { simd::labs_to_rgbs(&labs) };
         assert_eq!(rgbs.as_slice(), RGBS.as_slice());
     }
 
     #[test]
-    fn test_avx_labs_to_rgbs_unsaturated() {
+    fn test_simd_labs_to_rgbs_unsaturated() {
         let labs = vec![
             Lab { l: 66.6348, a: 52.260696, b: 14.850557 },
         ];
-        let rgbs_non_avx = labs_to_rgbs(&labs);
-        let rgbs_avx = unsafe { avx::labs_to_rgbs(&labs) };
-        assert_eq!(rgbs_avx, rgbs_non_avx);
+        let rgbs_non_simd = labs_to_rgbs(&labs);
+        let rgbs_simd = unsafe { simd::labs_to_rgbs(&labs) };
+        assert_eq!(rgbs_simd, rgbs_non_simd);
     }
 }

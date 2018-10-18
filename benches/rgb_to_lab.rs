@@ -30,11 +30,11 @@ fn rgbs_to_labs(c: &mut Criterion) {
     });
 }
 
-fn rgbs_to_labs_avx(c: &mut Criterion) {
-    c.bench_function("rgbs_to_labs_avx", move |b| {
-        b.iter(|| unsafe { lab::avx::rgbs_to_labs(&RGBS) })
+fn rgbs_to_labs_simd(c: &mut Criterion) {
+    c.bench_function("rgbs_to_labs_simd", move |b| {
+        b.iter(|| unsafe { lab::simd::rgbs_to_labs(&RGBS) })
     });
 }
 
-criterion_group!(benches, rgbs_to_labs, rgbs_to_labs_avx);
+criterion_group!(benches, rgbs_to_labs, rgbs_to_labs_simd);
 criterion_main!(benches);

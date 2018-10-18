@@ -24,11 +24,11 @@ fn labs_to_rgbs(c: &mut Criterion) {
     });
 }
 
-fn labs_to_rgbs_avx(c: &mut Criterion) {
-    c.bench_function("labs_to_rgbs_avx", move |b| {
-        b.iter(|| unsafe { lab::avx::labs_to_rgbs(&LABS) })
+fn labs_to_rgbs_simd(c: &mut Criterion) {
+    c.bench_function("labs_to_rgbs_simd", move |b| {
+        b.iter(|| unsafe { lab::simd::labs_to_rgbs(&LABS) })
     });
 }
 
-criterion_group!(benches, labs_to_rgbs, labs_to_rgbs_avx);
+criterion_group!(benches, labs_to_rgbs, labs_to_rgbs_simd);
 criterion_main!(benches);
