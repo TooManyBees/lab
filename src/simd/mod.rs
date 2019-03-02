@@ -1,3 +1,9 @@
+//! # SIMD
+//!
+//! Functions for parallel conversion using AVX and SSE4.1
+//! This module is conditionally compiled by the cfg gate
+//! `#[cfg(target_arch = "x86_64")]`
+
 mod labs_to_rgbs;
 mod rgbs_to_labs;
 

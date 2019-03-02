@@ -4,26 +4,46 @@ use super::{Lab, KAPPA, EPSILON, CBRT_EPSILON};
 
 static BLANK_LAB: Lab = Lab { l: f32::NAN, a: f32::NAN, b: f32::NAN };
 
+/// Converts a slice of `Lab`s to RGB triples using 256-bit SIMD operations.
+///
+/// # Performance warning
+/// While `lab::simd::rgbs_to_labs` is more performant than its scalar counterpart
+/// in serial, this function is often equally fast or slightly slower than iterating
+/// over a slice of `Lab`s with `Lab::to_rgb`.
+///
+/// # Panics
+/// This function is unsafe due to unchecked SIMD calls. Any calls to
+/// this function *must* be put behind these conditionals:
+/// ```ignore
+/// if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+///     unsafe { lab::simd::labs_to_rgbs(&labs) };
+/// }
+/// ```
 pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-    labs.chunks(8).fold(Vec::with_capacity(labs.len()), |mut v, labs| {
-        let rgbs: Vec<_> = match labs {
-            packed @ &[_, _, _, _, _, _, _, _] => {
-                vec_labs_to_vec_rgbs(packed)
-            },
-            rest => {
-                let labs: Vec<Lab> =
-                    rest.iter().cloned().chain(iter::repeat(BLANK_LAB))
-                    .take(8)
-                    .collect();
-
-                let mut rgbs = vec_labs_to_vec_rgbs(&labs);
-                rgbs.truncate(rest.len());
-                rgbs
-            },
-        };
+    let chunks = labs.chunks_exact(8);
+    let remainder = chunks.remainder();
+    let mut vs = chunks.fold(Vec::with_capacity(labs.len()), |mut v, labs| {
+        let rgbs = vec_labs_to_vec_rgbs(labs);
         v.extend_from_slice(&rgbs);
         v
-    })
+    });
+
+    // While we could simplify this block by just calling the scalar version
+    // of the code on the remainder, there are some variations between scalar
+    // and SIMD floating point math (especially on TravisCI for some reason?)
+    // and I don't want the trailing N items to be computed by a different
+    // algorithm.
+    if remainder.len() > 0 {
+        let labs: Vec<Lab> =
+            remainder.iter().cloned().chain(iter::repeat(BLANK_LAB))
+            .take(8)
+            .collect();
+
+        let rgbs = vec_labs_to_vec_rgbs(&labs);
+        vs.extend_from_slice(&rgbs[..remainder.len()]);
+    }
+
+    vs
 }
 
 unsafe fn vec_labs_to_vec_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {

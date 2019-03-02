@@ -4,36 +4,47 @@ use super::{Lab, KAPPA, EPSILON};
 
 static BLANK_RGB: [f32; 3] = [f32::NAN; 3];
 
+/// Converts a slice of `Lab`s to RGB triples using 256-bit SIMD operations.
+///
+/// # Panics
+/// This function is unsafe due to unchecked SIMD calls. Any calls to
+/// this function *must* be put behind these conditionals:
+/// ```ignore
+/// if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+///     unsafe { lab::simd::rgbs_to_labs(&rgbs) };
+/// }
 pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
-    rgbs.chunks(8).fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
-        let labs = match rgbs {
-            rgbs @ &[_, _, _, _, _, _, _, _] => {
-                let (r, g, b) = rgb_slice_to_simd(rgbs);
-                let (r, g, b) = uint_to_f32(r, g, b);
-                simd_rgbs_to_vec_labs(r, g, b)
-            },
-            rest => {
-                let rgbs: Vec<[f32; 3]> =
-                    rest.iter().map(|rgb: &[u8; 3]| [rgb[0] as f32, rgb[1] as f32, rgb[2] as f32])
-                    .chain(iter::repeat(BLANK_RGB))
-                    .take(8)
-                    .collect();
-                let (r, g, b) = {
-                    let rgbs = &rgbs[..8];
-                    (
-                        _mm256_set_ps(rgbs[0][0], rgbs[1][0], rgbs[2][0], rgbs[3][0], rgbs[4][0], rgbs[5][0], rgbs[6][0], rgbs[7][0]),
-                        _mm256_set_ps(rgbs[0][1], rgbs[1][1], rgbs[2][1], rgbs[3][1], rgbs[4][1], rgbs[5][1], rgbs[6][1], rgbs[7][1]),
-                        _mm256_set_ps(rgbs[0][2], rgbs[1][2], rgbs[2][2], rgbs[3][2], rgbs[4][2], rgbs[5][2], rgbs[6][2], rgbs[7][2]),
-                    )
-                };
-                let mut labs = simd_rgbs_to_vec_labs(r, g, b);
-                labs.truncate(rest.len());
-                labs
-            },
-        };
+    let chunks = rgbs.chunks_exact(8);
+    let remainder = chunks.remainder();
+    let mut vs = chunks.fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
+        let (r, g, b) = rgb_slice_to_simd(rgbs);
+        let (r, g, b) = uint_to_f32(r, g, b);
+        let labs = simd_rgbs_to_vec_labs(r, g, b);
         v.extend_from_slice(&labs);
         v
-    })
+    });
+
+    // While we could simplify this block by just calling the scalar version
+    // of the code on the remainder, there are some variations between scalar
+    // and SIMD floating point math (especially on TravisCI for some reason?)
+    // and I don't want the trailing N items to be computed by a different
+    // algorithm.
+    if remainder.len() > 0 {
+        let rgbs: Vec<[f32; 3]> =
+            remainder.iter().map(|rgb: &[u8; 3]| [rgb[0] as f32, rgb[1] as f32, rgb[2] as f32])
+            .chain(iter::repeat(BLANK_RGB))
+            .take(8)
+            .collect();
+        let (r, g, b) = (
+            _mm256_set_ps(rgbs[0][0], rgbs[1][0], rgbs[2][0], rgbs[3][0], rgbs[4][0], rgbs[5][0], rgbs[6][0], rgbs[7][0]),
+            _mm256_set_ps(rgbs[0][1], rgbs[1][1], rgbs[2][1], rgbs[3][1], rgbs[4][1], rgbs[5][1], rgbs[6][1], rgbs[7][1]),
+            _mm256_set_ps(rgbs[0][2], rgbs[1][2], rgbs[2][2], rgbs[3][2], rgbs[4][2], rgbs[5][2], rgbs[6][2], rgbs[7][2]),
+        );
+        let labs = simd_rgbs_to_vec_labs(r, g, b);
+        vs.extend_from_slice(&labs[..remainder.len()]);
+    }
+
+    vs
 }
 
 unsafe fn simd_rgbs_to_vec_labs(r: __m256, g: __m256, b: __m256) -> Vec<Lab> {
@@ -44,7 +55,6 @@ unsafe fn simd_rgbs_to_vec_labs(r: __m256, g: __m256, b: __m256) -> Vec<Lab> {
 
 #[inline]
 unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256i, __m256i, __m256i) {
-    let rgbs = &rgbs[..8];
     let r = _mm256_set_epi32(rgbs[0][0] as i32, rgbs[1][0] as i32, rgbs[2][0] as i32, rgbs[3][0] as i32, rgbs[4][0] as i32, rgbs[5][0] as i32, rgbs[6][0] as i32, rgbs[7][0] as i32);
     let g = _mm256_set_epi32(rgbs[0][1] as i32, rgbs[1][1] as i32, rgbs[2][1] as i32, rgbs[3][1] as i32, rgbs[4][1] as i32, rgbs[5][1] as i32, rgbs[6][1] as i32, rgbs[7][1] as i32);
     let b = _mm256_set_epi32(rgbs[0][2] as i32, rgbs[1][2] as i32, rgbs[2][2] as i32, rgbs[3][2] as i32, rgbs[4][2] as i32, rgbs[5][2] as i32, rgbs[6][2] as i32, rgbs[7][2] as i32);
