@@ -23,7 +23,7 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     let chunks = labs.chunks_exact(8);
     let remainder = chunks.remainder();
     let mut vs = chunks.fold(Vec::with_capacity(labs.len()), |mut v, labs| {
-        let rgbs = vec_labs_to_vec_rgbs(labs);
+        let rgbs = slice_labs_to_slice_rgbs(labs);
         v.extend_from_slice(&rgbs);
         v
     });
@@ -39,18 +39,18 @@ pub unsafe fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
             .take(8)
             .collect();
 
-        let rgbs = vec_labs_to_vec_rgbs(&labs);
+        let rgbs = slice_labs_to_slice_rgbs(&labs);
         vs.extend_from_slice(&rgbs[..remainder.len()]);
     }
 
     vs
 }
 
-unsafe fn vec_labs_to_vec_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+unsafe fn slice_labs_to_slice_rgbs(labs: &[Lab]) -> [[u8; 3]; 8] {
     let (l, a, b) = lab_slice_to_simd(labs);
     let (x, y, z) = labs_to_xyzs(l, a, b);
     let (r, g, b) = xyzs_to_rgbs(x, y, z);
-    simd_to_rgb_vec(r, g, b)
+    simd_to_rgb_array(r, g, b)
 }
 
 #[inline]
@@ -176,11 +176,16 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
 }
 
 #[inline]
-unsafe fn simd_to_rgb_vec(r: __m256, g: __m256, b: __m256) -> Vec<[u8; 3]> {
+unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
     let r: [f32; 8] = mem::transmute(_mm256_round_ps(r, _MM_FROUND_TO_NEAREST_INT));
     let g: [f32; 8] = mem::transmute(_mm256_round_ps(g, _MM_FROUND_TO_NEAREST_INT));
     let b: [f32; 8] = mem::transmute(_mm256_round_ps(b, _MM_FROUND_TO_NEAREST_INT));
-    r.iter().zip(g.iter()).zip(b.iter()).map(|((&r, &g), &b)| [r as u8, g as u8, b as u8]).rev().collect()
+
+    let mut rgbs: [[u8; 3]; 8] = mem::uninitialized();
+    for (((&r, &g), &b), rgb) in r.iter().zip(g.iter()).zip(b.iter()).rev().zip(rgbs.iter_mut()) {
+        *rgb = [r as u8, g as u8, b as u8];
+    }
+    rgbs
 }
 
 // #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]
