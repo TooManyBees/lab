@@ -120,23 +120,24 @@ unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 
 #[inline]
 unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
+    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(EPSILON), _CMP_GT_OQ);
     // do false branch first
     let false_branch = _mm256_div_ps(
         _mm256_add_ps(
             _mm256_mul_ps(c, _mm256_set1_ps(KAPPA)),
             _mm256_set1_ps(16.0)),
         _mm256_set1_ps(116.0));
-
-    let unpacked_false_branch: [f32; 8] = mem::transmute(false_branch);
-    let mut unpacked: [f32; 8] = mem::transmute(c);
-    for (i, el) in unpacked.iter_mut().enumerate() {
-        if *el > EPSILON {
-            *el = el.powf(1.0/3.0);
-        } else {
-            *el = unpacked_false_branch[i];
+    let true_branch = {
+        let mut unpacked: [f32; 8] = mem::transmute(c);
+        let unpacked_mask: [f32; 8] = mem::transmute(mask);
+        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
+            if test.is_nan() { // NaN == true, 0.0 == false
+                *el = el.powf(1.0/3.0)
+            }
         }
-    }
-    mem::transmute(unpacked)
+        mem::transmute(unpacked)
+    };
+    _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
 unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
