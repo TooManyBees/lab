@@ -14,5 +14,19 @@ keywords = ["lab", "color", "pixel", "rgb"]
 categories = ["multimedia::images", "multimedia::video"]
 license = "MIT"
 
+[lib]
+bench = false
+
 [dev-dependencies]
-rand = "0.5" # used for benchmark tests
+rand = "0.5"
+criterion = { version = "0.2", default-features = false }
+lazy_static = "*"
+pretty_assertions = "0.5"
+
+[[bench]]
+name = "rgb_to_lab"
+harness = false
+
+[[bench]]
+name = "lab_to_rgb"
+harness = false
