@@ -1,8 +1,12 @@
+use super::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
 use std::arch::x86_64::*;
-use std::{iter, mem, f32};
-use super::{Lab, KAPPA, EPSILON, CBRT_EPSILON};
+use std::{f32, iter, mem};
 
-static BLANK_LAB: Lab = Lab { l: f32::NAN, a: f32::NAN, b: f32::NAN };
+static BLANK_LAB: Lab = Lab {
+    l: f32::NAN,
+    a: f32::NAN,
+    b: f32::NAN,
+};
 
 /// Converts a slice of `Lab`s to `[u8; 3]` RGB triples using 256-bit SIMD operations.
 ///
@@ -29,8 +33,10 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     // and I don't want the trailing N items to be computed by a different
     // algorithm.
     if remainder.len() > 0 {
-        let labs: Vec<Lab> =
-            remainder.iter().cloned().chain(iter::repeat(BLANK_LAB))
+        let labs: Vec<Lab> = remainder
+            .iter()
+            .cloned()
+            .chain(iter::repeat(BLANK_LAB))
             .take(8)
             .collect();
 
@@ -106,15 +112,24 @@ unsafe fn slice_labs_to_slice_rgbs(labs: &[Lab]) -> [[u8; 3]; 8] {
 #[inline]
 unsafe fn lab_slice_to_simd(labs: &[Lab]) -> (__m256, __m256, __m256) {
     let labs = &labs[..8];
-    let l = _mm256_set_ps(labs[0].l, labs[1].l, labs[2].l, labs[3].l, labs[4].l, labs[5].l, labs[6].l, labs[7].l);
-    let a = _mm256_set_ps(labs[0].a, labs[1].a, labs[2].a, labs[3].a, labs[4].a, labs[5].a, labs[6].a, labs[7].a);
-    let b = _mm256_set_ps(labs[0].b, labs[1].b, labs[2].b, labs[3].b, labs[4].b, labs[5].b, labs[6].b, labs[7].b);
+    let l = _mm256_set_ps(
+        labs[0].l, labs[1].l, labs[2].l, labs[3].l, labs[4].l, labs[5].l, labs[6].l, labs[7].l,
+    );
+    let a = _mm256_set_ps(
+        labs[0].a, labs[1].a, labs[2].a, labs[3].a, labs[4].a, labs[5].a, labs[6].a, labs[7].a,
+    );
+    let b = _mm256_set_ps(
+        labs[0].b, labs[1].b, labs[2].b, labs[3].b, labs[4].b, labs[5].b, labs[6].b, labs[7].b,
+    );
     (l, a, b)
 }
 
 #[inline]
 unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m256) {
-    let fy = _mm256_div_ps(_mm256_add_ps(l, _mm256_set1_ps(16.0)), _mm256_set1_ps(116.0));
+    let fy = _mm256_div_ps(
+        _mm256_add_ps(l, _mm256_set1_ps(16.0)),
+        _mm256_set1_ps(116.0),
+    );
     let fx = _mm256_add_ps(_mm256_div_ps(a, _mm256_set1_ps(500.0)), fy);
     let fz = _mm256_sub_ps(fy, _mm256_div_ps(b, _mm256_set1_ps(200.0)));
 
@@ -204,7 +219,7 @@ unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 }
 
 #[inline]
-unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
+unsafe fn xyzs_to_rgbs_map(c: __m256) -> __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
@@ -213,7 +228,8 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) ->  __m256 {
         // Avoid `powf` at all costs by only operating on the elements that
         // will make it through the mask. `powf` is a significant performance hit
         for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-            if test.is_nan() { // NaN == true, 0.0 == false
+            if test.is_nan() {
+                // NaN == true, 0.0 == false
                 *el = el.powf(1.0 / 2.4);
             }
         }
@@ -232,7 +248,13 @@ unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
     let b: [f32; 8] = mem::transmute(_mm256_round_ps(b, _MM_FROUND_TO_NEAREST_INT));
 
     let mut rgbs: [[u8; 3]; 8] = mem::uninitialized();
-    for (((&r, &g), &b), rgb) in r.iter().zip(g.iter()).zip(b.iter()).rev().zip(rgbs.iter_mut()) {
+    for (((&r, &g), &b), rgb) in r
+        .iter()
+        .zip(g.iter())
+        .zip(b.iter())
+        .rev()
+        .zip(rgbs.iter_mut())
+    {
         *rgb = [r as u8, g as u8, b as u8];
     }
     rgbs
@@ -241,14 +263,14 @@ unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
 // #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]
 #[cfg(test)]
 mod test {
+    use super::super::super::{labs_to_rgbs, simd, Lab};
     use rand;
-    use rand::Rng;
     use rand::distributions::Standard;
-    use super::super::super::{Lab, labs_to_rgbs, simd};
+    use rand::Rng;
 
     lazy_static! {
-        static ref RGBS: Vec<[u8;3]> = {
-            let rand_seed = [0u8;32];
+        static ref RGBS: Vec<[u8; 3]> = {
+            let rand_seed = [0u8; 32];
             let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(512).collect()
         };
@@ -263,9 +285,11 @@ mod test {
 
     #[test]
     fn test_simd_labs_to_rgbs_unsaturated() {
-        let labs = vec![
-            Lab { l: 66.6348, a: 52.260696, b: 14.850557 },
-        ];
+        let labs = vec![Lab {
+            l: 66.6348,
+            a: 52.260696,
+            b: 14.850557,
+        }];
         let rgbs_non_simd = labs_to_rgbs(&labs);
         let rgbs_simd = simd::labs_to_rgbs(&labs);
         assert_eq!(rgbs_simd, rgbs_non_simd);

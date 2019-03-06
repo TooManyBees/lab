@@ -2,16 +2,16 @@
 extern crate criterion;
 #[macro_use]
 extern crate lazy_static;
-extern crate rand;
 extern crate lab;
+extern crate rand;
 
 use criterion::Criterion;
-use rand::Rng;
 use rand::distributions::Standard;
+use rand::Rng;
 
 lazy_static! {
-    static ref RGBS: Vec<[u8;3]> = {
-        let rand_seed = [0u8;32];
+    static ref RGBS: Vec<[u8; 3]> = {
+        let rand_seed = [0u8; 32];
         let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
         rng.sample_iter(&Standard).take(512).collect()
     };
@@ -25,9 +25,7 @@ lazy_static! {
 // }
 
 fn rgbs_to_labs(c: &mut Criterion) {
-    c.bench_function("rgbs_to_labs", move |b| {
-        b.iter(|| lab::rgbs_to_labs(&RGBS))
-    });
+    c.bench_function("rgbs_to_labs", move |b| b.iter(|| lab::rgbs_to_labs(&RGBS)));
 }
 
 fn rgbs_to_labs_simd(c: &mut Criterion) {

@@ -1,6 +1,6 @@
+use super::{Lab, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{iter, mem};
-use super::{Lab, KAPPA, EPSILON};
 
 static BLANK_RGB: [u8; 3] = [0u8; 3];
 
@@ -29,8 +29,9 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     // and I don't want the trailing N items to be computed by a different
     // algorithm.
     if remainder.len() > 0 {
-        let rgbs: Vec<[u8; 3]> =
-            remainder.iter().cloned()
+        let rgbs: Vec<[u8; 3]> = remainder
+            .iter()
+            .cloned()
             .chain(iter::repeat(BLANK_RGB))
             .take(8)
             .collect();
@@ -101,9 +102,36 @@ unsafe fn slice_rgbs_to_slice_labs(rgbs: &[[u8; 3]]) -> [Lab; 8] {
 
 #[inline]
 unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
-    let r = _mm256_set_ps(rgbs[0][0] as f32, rgbs[1][0] as f32, rgbs[2][0] as f32, rgbs[3][0] as f32, rgbs[4][0] as f32, rgbs[5][0] as f32, rgbs[6][0] as f32, rgbs[7][0] as f32);
-    let g = _mm256_set_ps(rgbs[0][1] as f32, rgbs[1][1] as f32, rgbs[2][1] as f32, rgbs[3][1] as f32, rgbs[4][1] as f32, rgbs[5][1] as f32, rgbs[6][1] as f32, rgbs[7][1] as f32);
-    let b = _mm256_set_ps(rgbs[0][2] as f32, rgbs[1][2] as f32, rgbs[2][2] as f32, rgbs[3][2] as f32, rgbs[4][2] as f32, rgbs[5][2] as f32, rgbs[6][2] as f32, rgbs[7][2] as f32);
+    let r = _mm256_set_ps(
+        rgbs[0][0] as f32,
+        rgbs[1][0] as f32,
+        rgbs[2][0] as f32,
+        rgbs[3][0] as f32,
+        rgbs[4][0] as f32,
+        rgbs[5][0] as f32,
+        rgbs[6][0] as f32,
+        rgbs[7][0] as f32,
+    );
+    let g = _mm256_set_ps(
+        rgbs[0][1] as f32,
+        rgbs[1][1] as f32,
+        rgbs[2][1] as f32,
+        rgbs[3][1] as f32,
+        rgbs[4][1] as f32,
+        rgbs[5][1] as f32,
+        rgbs[6][1] as f32,
+        rgbs[7][1] as f32,
+    );
+    let b = _mm256_set_ps(
+        rgbs[0][2] as f32,
+        rgbs[1][2] as f32,
+        rgbs[2][2] as f32,
+        rgbs[3][2] as f32,
+        rgbs[4][2] as f32,
+        rgbs[5][2] as f32,
+        rgbs[6][2] as f32,
+        rgbs[7][2] as f32,
+    );
     (r, g, b)
 }
 
@@ -163,7 +191,10 @@ unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
     let y = xyzs_to_labs_map(y);
     let z = xyzs_to_labs_map(_mm256_div_ps(z, _mm256_set1_ps(1.08883)));
 
-    let l = _mm256_add_ps(_mm256_mul_ps(y, _mm256_set1_ps(116.0)), _mm256_set1_ps(-16.0));
+    let l = _mm256_add_ps(
+        _mm256_mul_ps(y, _mm256_set1_ps(116.0)),
+        _mm256_set1_ps(-16.0),
+    );
     let a = _mm256_mul_ps(_mm256_sub_ps(x, y), _mm256_set1_ps(500.0));
     let b = _mm256_mul_ps(_mm256_sub_ps(y, z), _mm256_set1_ps(200.0));
 
@@ -177,14 +208,17 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
     let false_branch = _mm256_div_ps(
         _mm256_add_ps(
             _mm256_mul_ps(c, _mm256_set1_ps(KAPPA)),
-            _mm256_set1_ps(16.0)),
-        _mm256_set1_ps(116.0));
+            _mm256_set1_ps(16.0),
+        ),
+        _mm256_set1_ps(116.0),
+    );
     let true_branch = {
         let mut unpacked: [f32; 8] = mem::transmute(c);
         let unpacked_mask: [f32; 8] = mem::transmute(mask);
         for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-            if test.is_nan() { // NaN == true, 0.0 == false
-                *el = el.powf(1.0/3.0)
+            if test.is_nan() {
+                // NaN == true, 0.0 == false
+                *el = el.powf(1.0 / 3.0)
             }
         }
         mem::transmute(unpacked)
@@ -198,7 +232,13 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
     let b: [f32; 8] = mem::transmute(b);
 
     let mut labs: [Lab; 8] = mem::uninitialized();
-    for (((&l, &a), &b), lab) in l.iter().zip(a.iter()).zip(b.iter()).rev().zip(labs.iter_mut()) {
+    for (((&l, &a), &b), lab) in l
+        .iter()
+        .zip(a.iter())
+        .zip(b.iter())
+        .rev()
+        .zip(labs.iter_mut())
+    {
         *lab = Lab { l, a, b };
     }
     labs
@@ -226,14 +266,14 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
 // #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]
 #[cfg(test)]
 mod test {
-    use rand;
-    use rand::Rng;
-    use rand::distributions::Standard;
     use super::super::super::{rgbs_to_labs, simd};
+    use rand;
+    use rand::distributions::Standard;
+    use rand::Rng;
 
     lazy_static! {
-        static ref RGBS: Vec<[u8;3]> = {
-            let rand_seed = [0u8;32];
+        static ref RGBS: Vec<[u8; 3]> = {
+            let rand_seed = [0u8; 32];
             let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(512).collect()
         };
@@ -266,9 +306,7 @@ mod test {
 
     #[test]
     fn test_simd_rgbs_to_labs_unsaturated() {
-        let rgbs = vec![
-            [253, 120, 138],
-        ];
+        let rgbs = vec![[253, 120, 138]];
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
         assert_eq!(labs_simd, labs_non_simd);

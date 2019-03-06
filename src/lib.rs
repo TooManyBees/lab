@@ -72,9 +72,9 @@ fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
     let b = rgb_to_xyz_map(rgb[2]);
 
     [
-        r*0.4124564390896921   + g*0.357576077643909 + b*0.18043748326639894,
-        r*0.21267285140562248  + g*0.715152155287818 + b*0.07217499330655958,
-        r*0.019333895582329317 + g*0.119192025881303 + b*0.9503040785363677,
+        r * 0.4124564390896921 + g * 0.357576077643909 + b * 0.18043748326639894,
+        r * 0.21267285140562248 + g * 0.715152155287818 + b * 0.07217499330655958,
+        r * 0.019333895582329317 + g * 0.119192025881303 + b * 0.9503040785363677,
     ]
 }
 
@@ -105,7 +105,7 @@ fn xyz_to_lab(xyz: [f32; 3]) -> Lab {
 #[inline]
 fn xyz_to_lab_map(c: f32) -> f32 {
     if c > EPSILON {
-        c.powf(1.0/3.0)
+        c.powf(1.0 / 3.0)
     } else {
         (KAPPA * c + 16.0) / 116.0
     }
@@ -131,11 +131,7 @@ fn lab_to_xyz(lab: &Lab) -> [f32; 3] {
         ((fz * 116.0) - 16.0) / KAPPA
     };
 
-    [
-        xr * 0.95047,
-        yr,
-        zr * 1.08883,
-    ]
+    [xr * 0.95047, yr, zr * 1.08883]
 }
 
 fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
@@ -143,24 +139,23 @@ fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
     let y = xyz[1];
     let z = xyz[2];
 
-    let r = x* 3.2404541621141054  - y*1.5371385127977166  - z*0.4985314095560162;
-    let g = x*-0.9692660305051868  + y*1.8760108454466942  + z*0.04155601753034984;
-    let b = x* 0.05564343095911469 - y*0.20402591351675387 + z*1.0572251882231791;
+    let r = x * 3.2404541621141054 - y * 1.5371385127977166 - z * 0.4985314095560162;
+    let g = x * -0.9692660305051868 + y * 1.8760108454466942 + z * 0.04155601753034984;
+    let b = x * 0.05564343095911469 - y * 0.20402591351675387 + z * 1.0572251882231791;
 
-    [
-        xyz_to_rgb_map(r),
-        xyz_to_rgb_map(g),
-        xyz_to_rgb_map(b),
-    ]
+    [xyz_to_rgb_map(r), xyz_to_rgb_map(g), xyz_to_rgb_map(b)]
 }
 
 #[inline]
 fn xyz_to_rgb_map(c: f32) -> u8 {
     ((if c > 0.0031308 {
-         1.055 * c.powf(1.0/2.4) - 0.055
+        1.055 * c.powf(1.0 / 2.4) - 0.055
     } else {
-         12.92 * c
-    }) * 255.0).round().min(255.0).max(0.0) as u8
+        12.92 * c
+    }) * 255.0)
+        .round()
+        .min(255.0)
+        .max(0.0) as u8
 }
 
 /// Convenience function to map a slice of RGB values to Lab values in serial
@@ -202,7 +197,6 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
 }
 
 impl Lab {
-
     // pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
     //     #[cfg(target_arch = "x86_64")]
     //     {
@@ -276,21 +270,24 @@ impl Lab {
     /// assert_eq!(254.23636, pink.squared_distance(&websafe_pink));
     /// ```
     pub fn squared_distance(&self, other: &Lab) -> f32 {
-        (self.l - other.l).powi(2) +
-        (self.a - other.a).powi(2) +
-        (self.b - other.b).powi(2)
+        (self.l - other.l).powi(2) + (self.a - other.a).powi(2) + (self.b - other.b).powi(2)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{labs_to_rgbs, rgbs_to_labs, Lab};
     use rand;
-    use rand::Rng;
     use rand::distributions::Standard;
-    use super::{Lab, rgbs_to_labs, labs_to_rgbs};
+    use rand::Rng;
 
-    const PINK: Lab = Lab { l: 66.639084, a: 52.251457, b: 14.860654 };
+    const PINK: Lab = Lab {
+        l: 66.639084,
+        a: 52.251457,
+        b: 14.860654,
+    };
 
+    #[rustfmt::skip]
     static COLOURS: [([u8; 3], Lab); 17] = [
         ([253, 120, 138], PINK),
 
@@ -317,8 +314,10 @@ mod tests {
     fn test_from_rgb() {
         for test in COLOURS.iter() {
             assert_eq!(test.1, Lab::from_rgb(&test.0));
-            assert_eq!(test.1,
-                       Lab::from_rgba(&[test.0[0], test.0[1], test.0[2], 255]));
+            assert_eq!(
+                test.1,
+                Lab::from_rgba(&[test.0[0], test.0[1], test.0[2], 255])
+            );
         }
     }
 
@@ -331,7 +330,11 @@ mod tests {
 
     #[test]
     fn test_distance() {
-        let ugly_websafe_pink = Lab { l: 64.2116, a: 62.519463, b: 2.8871894 };
+        let ugly_websafe_pink = Lab {
+            l: 64.2116,
+            a: 62.519463,
+            b: 2.8871894,
+        };
         assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.68846);
     }
 
@@ -350,7 +353,7 @@ mod tests {
     #[test]
     fn test_rgb_to_lab_to_rgb() {
         let rgbs: Vec<[u8; 3]> = {
-            let rand_seed = [1u8;32];
+            let rand_seed = [1u8; 32];
             let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(2048).collect()
         };
