@@ -4,20 +4,21 @@ use super::{Lab, KAPPA, EPSILON};
 
 static BLANK_RGB: [u8; 3] = [0u8; 3];
 
-/// Converts a slice of `Lab`s to RGB triples using 256-bit SIMD operations.
+/// Converts a slice of `[u8; 3]` RGB triples to `Lab`s using 256-bit SIMD operations.
 ///
 /// # Panics
-/// This function is unsafe due to unchecked SIMD calls. Any calls to
-/// this function *must* be put behind these conditionals:
+/// This function will panic if executed on a non-x86_64 CPU or one without AVX
+/// and SSE 4.1 support.
 /// ```ignore
 /// if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-///     unsafe { lab::simd::rgbs_to_labs(&rgbs) };
+///     lab::simd::rgbs_to_labs(&rgbs);
 /// }
-pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
+/// ```
+pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     let chunks = rgbs.chunks_exact(8);
     let remainder = chunks.remainder();
     let mut vs = chunks.fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
-        let labs = slice_rgbs_to_slice_labs(rgbs);
+        let labs = unsafe { slice_rgbs_to_slice_labs(rgbs) };
         v.extend_from_slice(&labs);
         v
     });
@@ -33,11 +34,62 @@ pub unsafe fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
             .chain(iter::repeat(BLANK_RGB))
             .take(8)
             .collect();
-        let labs = slice_rgbs_to_slice_labs(&rgbs);
+        let labs = unsafe { slice_rgbs_to_slice_labs(&rgbs) };
         vs.extend_from_slice(&labs[..remainder.len()]);
     }
 
     vs
+}
+
+/// Convert a slice of 8 `[u8; 3]` RGB tripes into an array of 8 `Lab` structs.
+///
+/// This is the fundamental unit of work that `lab::simd::rgbs_to_labs` performs.
+/// If you need to control how to parallelize this work, use this function.
+///
+/// Only the first 8 elements of the input slice will be converted. The example given
+/// is very close to the implementation of `lab::simd::rgbs_to_labs`. Because this
+/// library makes no assumptions about how to parallelize work, use this function
+/// to add parallelization with Rayon, etc.
+///
+/// # Example
+/// ```
+/// # use lab::Lab;
+/// # use std::iter;
+/// # let rgbs: Vec<[u8; 3]> = vec![];
+/// ##[cfg(target_arch = "x86_64")]
+/// {
+///     if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+///         let chunks = rgbs.chunks_exact(8);
+///         let remainder = chunks.remainder();
+///         // Parallelizing work with Rayon? Do it here, at `.fold()`
+///         let mut vs = chunks.fold(Vec::with_capacity(rgbs.len()), |mut v, rgbs| {
+///             let labs = lab::simd::rgbs_to_labs_chunk(rgbs);
+///             v.extend_from_slice(&labs);
+///             v
+///         });
+///
+///         if remainder.len() > 0 {
+///             const BLANK_RGB: [u8; 3] = [0u8; 3];
+///             let rgbs: Vec<[u8; 3]> =
+///                 remainder.iter().cloned().chain(iter::repeat(BLANK_RGB))
+///                 .take(8)
+///                 .collect();
+///
+///             let labs = lab::simd::rgbs_to_labs_chunk(&rgbs);
+///             vs.extend_from_slice(&labs[..remainder.len()]);
+///         }
+///     }
+/// }
+/// ```
+///
+/// # Panics
+/// This function will panic of the input slice has fewer than 8 elements. Consider
+/// padding the input slice with blank values and then truncating the result.
+///
+/// Additionally, it will panic if run on a CPU that does not support x86_64's AVX
+/// and SSE 4.1 instructions.
+pub fn rgbs_to_labs_chunk(rgbs: &[[u8; 3]]) -> [Lab; 8] {
+    unsafe { slice_rgbs_to_slice_labs(rgbs) }
 }
 
 unsafe fn slice_rgbs_to_slice_labs(rgbs: &[[u8; 3]]) -> [Lab; 8] {
@@ -201,14 +253,14 @@ mod test {
         ];
 
         let labs_non_simd = rgbs_to_labs(&rgbs);
-        let labs_simd = unsafe { simd::rgbs_to_labs(&rgbs) };
+        let labs_simd = simd::rgbs_to_labs(&rgbs);
         assert_eq!(labs_simd, labs_non_simd);
     }
 
     #[test]
     fn test_simd_rgbs_to_labs_many() {
         let labs_non_simd = rgbs_to_labs(&RGBS);
-        let labs_simd = unsafe { simd::rgbs_to_labs(&RGBS) };
+        let labs_simd = simd::rgbs_to_labs(&RGBS);
         assert_eq!(labs_simd, labs_non_simd);
     }
 
@@ -218,7 +270,7 @@ mod test {
             [253, 120, 138],
         ];
         let labs_non_simd = rgbs_to_labs(&rgbs);
-        let labs_simd = unsafe { simd::rgbs_to_labs(&rgbs) };
+        let labs_simd = simd::rgbs_to_labs(&rgbs);
         assert_eq!(labs_simd, labs_non_simd);
     }
 }

@@ -1,6 +1,41 @@
 //! # Lab
 //!
 //! Tools for converting RGB colors to L\*a\*b\* measurements.
+//!
+//! RGB colors, for this crate at least, are considered to be an array
+//! of `u8` values (`[u8; 3]`), while L\*a\*b\* colors are represented
+//! by its own struct that uses `f32` values.
+//!
+//! # Usage
+//! ## Converting single values
+//! To convert a single value, use one of the functions
+//! * `lab::Lab::from_rgb(rgb: &[u8; 3]) -> Lab`
+//! * `lab::Lab::from_rgba(rgba: &[u8; 4]) -> Lab` (drops the fourth alpha byte)
+//! * `lab::Lab::to_rgb(&self) -> [u8; 3]`
+//!
+//! ## Converting multiple values
+//! To convert slices of values
+//! * `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
+//! * `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
+//! To convert slices using SIMD (AVX, SSE 4.1) operations
+//! * `lab::simd::rgbs_to_labs`
+//! * `lab::simd::labs_to_rgbs`
+//!
+//! ## Parallelization concerns
+//! This crate makes no assumptions about how to parallelize work, so the above
+//! functions that convert slices do so in serial. Presently, parallelizing the
+//! functions that accept slices is a manual job of reimplementing
+//! them using their fundamental work function, and replacing one iterator method
+//! with its equivalent from Rayon.
+//!
+//! `lab::rgbs_to_labs` and `lab::labs_to_rgbs` are convenience functions for
+//! `rgbs.iter().map(Lab::from_rgb).collect()`, which can easily be parallelized
+//! with Rayon by replacing `iter()` with `par_iter()`.
+//!
+//! For the SIMD based functions, their smallest unit of work is done by the
+//! functions `lab::simd::rgbs_to_labs_chunk` and `lab::simd::labs_to_rgbs_chunk`
+//! which both accept exactly 8 elements. See their respective docs for examples
+//! on where to add Rayon methods.
 
 #![doc(html_root_url = "https://docs.rs/lab/0.6.0")]
 
@@ -16,6 +51,7 @@ extern crate rand;
 #[cfg(target_arch = "x86_64")]
 pub mod simd;
 
+/// Struct representing a color in L\*a\*b\* space
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
     pub l: f32,
@@ -127,11 +163,39 @@ fn xyz_to_rgb_map(c: f32) -> u8 {
     }) * 255.0).round().min(255.0).max(0.0) as u8
 }
 
+/// Convenience function to map a slice of RGB values to Lab values in serial
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, rgbs_to_labs};
+/// let rgbs = &[[0u8, 127, 127], [127, 0, 127], [255, 0, 0]];
+/// let labs = lab::rgbs_to_labs(rgbs);
+/// assert_eq!(labs, vec![
+///     Lab { l: 47.8919, a: -28.683678, b: -8.42911 },
+///     Lab { l: 29.52658, a: 58.595745, b: -36.281406 },
+///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 }
+/// ]);
+/// ```
 #[inline]
 pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     rgbs.iter().map(Lab::from_rgb).collect()
 }
 
+/// Convenience function to map a slice of Lab values to RGB values in serial
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, labs_to_rgbs};
+/// let labs = &[
+///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
+/// ];
+/// let rgbs = lab::labs_to_rgbs(labs);
+/// assert_eq!(rgbs, vec![[0u8, 255, 255], [255, 0, 255], [255, 255, 0]]);
+/// ```
 #[inline]
 pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     labs.iter().map(Lab::to_rgb).collect()
@@ -139,27 +203,25 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
 
 impl Lab {
 
-    pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
-        #[cfg(target_arch = "x86_64")]
-        {
-            if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-                return unsafe { simd::rgbs_to_labs(rgbs) };
-            }
-        }
-        rgbs_to_labs(rgbs)
-    }
+    // pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
+    //     #[cfg(target_arch = "x86_64")]
+    //     {
+    //         if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+    //             return simd::rgbs_to_labs(rgbs);
+    //         }
+    //     }
+    //     rgbs_to_labs(rgbs)
+    // }
 
-    pub fn to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-        // Currently, SIMD code performs equal to or worse than scalar code
-
-        // #[cfg(target_arch = "x86_64")]
-        // {
-        //     if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-        //         return unsafe { simd::labs_to_rgbs(labs) };
-        //     }
-        // }
-        labs_to_rgbs(labs)
-    }
+    // pub fn to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+    //     #[cfg(target_arch = "x86_64")]
+    //     {
+    //         if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
+    //             return simd::labs_to_rgbs(labs);
+    //         }
+    //     }
+    //     labs_to_rgbs(labs)
+    // }
 
     /// Constructs a new `Lab` from a three-element array of `u8`s
     ///
