@@ -16,12 +16,12 @@ jobs:
       #     command: |
       #       rustfmt --version
       #       cargo fmt -- --write-mode=diff
-      - run:
-          name: Nightly Build
-          command: |
-            rustup run nightly rustc --version --verbose
-            rustup run nightly cargo --version --verbose
-            rustup run nightly cargo build
+      # - run:
+      #     name: Nightly Build
+      #     command: |
+      #       rustup run nightly rustc --version --verbose
+      #       rustup run nightly cargo --version --verbose
+      #       rustup run nightly cargo build
       - run:
           name: Stable Build
           command: |
