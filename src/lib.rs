@@ -37,7 +37,7 @@
 //! which both accept exactly 8 elements. See their respective docs for examples
 //! on where to add Rayon methods.
 
-#![doc(html_root_url = "https://docs.rs/lab/0.7.0")]
+#![doc(html_root_url = "https://docs.rs/lab/0.7.1")]
 
 #[cfg(test)]
 #[macro_use]
