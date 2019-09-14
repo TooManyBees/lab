@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-version = "0.7.1" # bump html_root_url attribute in lib.rs
+version = "0.7.2" # bump html_root_url attribute in lib.rs
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and

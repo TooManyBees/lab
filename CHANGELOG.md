@@ -1,3 +1,11 @@
+# 0.7.2
+
+* bumped dev dependency `criterion` from 0.2 to 0.3
+
+# 0.7.1
+
+* bumped dev dependency `pretty_assertions` from 0.5 to 0.6
+
 # 0.7.0
 
 * add convenience methods for converting slices of labs/rgbs
