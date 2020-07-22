@@ -247,7 +247,7 @@ unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
     let g: [f32; 8] = mem::transmute(_mm256_round_ps(g, _MM_FROUND_TO_NEAREST_INT));
     let b: [f32; 8] = mem::transmute(_mm256_round_ps(b, _MM_FROUND_TO_NEAREST_INT));
 
-    let mut rgbs: [[u8; 3]; 8] = mem::uninitialized();
+    let mut rgbs: [mem::MaybeUninit<[u8; 3]>; 8] = mem::MaybeUninit::uninit().assume_init();
     for (((&r, &g), &b), rgb) in r
         .iter()
         .zip(g.iter())
@@ -255,9 +255,9 @@ unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
         .rev()
         .zip(rgbs.iter_mut())
     {
-        *rgb = [r as u8, g as u8, b as u8];
+        *rgb = mem::MaybeUninit::new([r as u8, g as u8, b as u8]);
     }
-    rgbs
+    mem::transmute(rgbs)
 }
 
 // #[cfg(all(target_cpu = "x86_64", target_feature = "avx", target_feature = "sse4.1"))]

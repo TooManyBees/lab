@@ -231,7 +231,9 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
     let a: [f32; 8] = mem::transmute(a);
     let b: [f32; 8] = mem::transmute(b);
 
-    let mut labs: [Lab; 8] = mem::uninitialized();
+    // Per `https://doc.rust-lang.org/std/mem/union.MaybeUninit.html` this `assume_init`
+    // is safe because the MaybeUninits inside the array don't require initialization?
+    let mut labs: [mem::MaybeUninit<Lab>; 8] = mem::MaybeUninit::uninit().assume_init();
     for (((&l, &a), &b), lab) in l
         .iter()
         .zip(a.iter())
@@ -239,9 +241,9 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
         .rev()
         .zip(labs.iter_mut())
     {
-        *lab = Lab { l, a, b };
+        *lab = mem::MaybeUninit::new(Lab { l, a, b });
     }
-    labs
+    mem::transmute(labs)
 }
 
 // #[inline]
