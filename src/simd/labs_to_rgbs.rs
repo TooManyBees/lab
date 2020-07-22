@@ -1,4 +1,5 @@
-use super::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
+use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
+use crate::simd::math::powf256_ps;
 use std::arch::x86_64::*;
 use std::{f32, iter, mem};
 
@@ -223,17 +224,7 @@ unsafe fn xyzs_to_rgbs_map(c: __m256) -> __m256 {
     let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
-        let mut unpacked: [f32; 8] = mem::transmute(c);
-        let unpacked_mask: [f32; 8] = mem::transmute(mask);
-        // Avoid `powf` at all costs by only operating on the elements that
-        // will make it through the mask. `powf` is a significant performance hit
-        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-            if test.is_nan() {
-                // NaN == true, 0.0 == false
-                *el = el.powf(1.0 / 2.4);
-            }
-        }
-        let raised: __m256 = mem::transmute(unpacked);
+        let raised = powf256_ps(c, _mm256_set1_ps(1.0 / 2.4));
         let temp2 = _mm256_mul_ps(raised, _mm256_set1_ps(1.055));
         _mm256_sub_ps(temp2, _mm256_set1_ps(0.055))
     };

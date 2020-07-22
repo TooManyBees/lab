@@ -1,4 +1,5 @@
-use super::{Lab, EPSILON, KAPPA};
+use crate::{Lab, EPSILON, KAPPA};
+use crate::simd::math::powf256_ps;
 use std::arch::x86_64::*;
 use std::{iter, mem};
 
@@ -171,12 +172,7 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
         const A: f32 = 0.055 * 255.0;
         const D: f32 = 1.055 * 255.0;
         let t0 = _mm256_div_ps(_mm256_add_ps(c, _mm256_set1_ps(A)), _mm256_set1_ps(D));
-
-        let mut unpacked: [f32; 8] = mem::transmute(t0);
-        for el in unpacked.iter_mut() {
-            *el = el.powf(2.4);
-        }
-        mem::transmute(unpacked)
+        powf256_ps(t0, _mm256_set1_ps(2.4))
     };
 
     let false_branch = {
@@ -212,17 +208,7 @@ unsafe fn xyzs_to_labs_map(c: __m256) -> __m256 {
         ),
         _mm256_set1_ps(116.0),
     );
-    let true_branch = {
-        let mut unpacked: [f32; 8] = mem::transmute(c);
-        let unpacked_mask: [f32; 8] = mem::transmute(mask);
-        for (el, test) in unpacked.iter_mut().zip(unpacked_mask.iter()) {
-            if test.is_nan() {
-                // NaN == true, 0.0 == false
-                *el = el.powf(1.0 / 3.0)
-            }
-        }
-        mem::transmute(unpacked)
-    };
+    let true_branch = powf256_ps(c, _mm256_set1_ps(1.0 / 3.0));
     _mm256_blendv_ps(false_branch, true_branch, mask)
 }
 
