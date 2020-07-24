@@ -155,7 +155,9 @@ pub unsafe fn exp256_ps(x: __m256) -> __m256 {
 }
 
 pub unsafe fn powf256_ps(x: __m256, y: __m256) -> __m256 {
-    exp256_ps(_mm256_mul_ps(y, log256_ps(x)))
+    let invalid_mask = _mm256_cmp_ps(x, _mm256_setzero_ps(), _CMP_LE_OS);
+    let result = exp256_ps(_mm256_mul_ps(y, log256_ps(x)));
+    _mm256_or_ps(result, invalid_mask)
 }
 
 #[cfg(test)]
@@ -216,13 +218,14 @@ mod test {
 
     #[test]
     fn test_powf256_ps() {
+        let exponent = 4.0;
         let scalar_result: Vec<_> = {
-            let vals: [f32; 8] = [-1.5, 0.5, 1.0, 2.0, 4.0, 5.0, 6.0, 10.0];
-            vals.iter().map(|&n| n.powf(3.0)).collect()
+            let vals: [f32; 8] = [0.25, 0.5, 1.0, 2.0, 4.0, 5.0, 6.0, 10.0];
+            vals.iter().map(|&n| n.powf(exponent)).collect()
         };
         let avx_result: Vec<_> = unsafe {
-            let vals = _mm256_set_ps(-1.5, 0.5, 1.0, 2.0, 4.0, 5.0, 6.0, 10.0);
-            let three = _mm256_set1_ps(3.0);
+            let vals = _mm256_set_ps(0.25, 0.5, 1.0, 2.0, 4.0, 5.0, 6.0, 10.0);
+            let three = _mm256_set1_ps(exponent);
             let result = powf256_ps(vals, three);
             let result: [f32; 8] = mem::transmute(result);
             result.iter().rev().copied().collect()
