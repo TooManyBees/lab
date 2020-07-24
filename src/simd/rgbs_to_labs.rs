@@ -282,7 +282,7 @@ mod test {
 
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
-        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00005);
+        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00002);
     }
 
     #[test]
@@ -297,6 +297,6 @@ mod test {
         let rgbs = vec![[253, 120, 138]];
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
-        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00005);
+        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00002);
     }
 }

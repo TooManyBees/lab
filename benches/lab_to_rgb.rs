@@ -30,7 +30,7 @@ fn labs_to_rgbs(c: &mut Criterion) {
 
 fn labs_to_rgbs_simd(c: &mut Criterion) {
     c.bench_function("labs_to_rgbs_simd", move |b| {
-        b.iter(|| unsafe { lab::simd::labs_to_rgbs(&LABS) })
+        b.iter(|| lab::simd::labs_to_rgbs(&LABS))
     });
 }
 

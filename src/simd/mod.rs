@@ -10,4 +10,3 @@ mod math;
 
 pub use self::labs_to_rgbs::{labs_to_rgbs, labs_to_rgbs_chunk};
 pub use self::rgbs_to_labs::{rgbs_to_labs, rgbs_to_labs_chunk};
-use super::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
