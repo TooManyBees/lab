@@ -179,7 +179,7 @@ mod test {
             result.iter().rev().copied().collect()
         };
 
-        assert_eq!(scalar_result, avx_result)
+        assert_relative_eq!(scalar_result.as_slice(), avx_result.as_slice())
     }
 
     #[test]
@@ -213,7 +213,7 @@ mod test {
             result.iter().rev().copied().collect()
         };
 
-        assert_eq!(scalar_result, avx_result)
+        assert_relative_eq!(scalar_result.as_slice(), avx_result.as_slice())
     }
 
     #[test]
@@ -231,6 +231,6 @@ mod test {
             result.iter().rev().copied().collect()
         };
 
-        assert_eq!(scalar_result, avx_result)
+        assert_relative_eq!(scalar_result.as_slice(), avx_result.as_slice())
     }
 }
