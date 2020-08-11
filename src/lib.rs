@@ -44,6 +44,9 @@
 extern crate pretty_assertions;
 #[cfg(test)]
 #[macro_use]
+extern crate approx;
+#[cfg(test)]
+#[macro_use]
 extern crate lazy_static;
 #[cfg(test)]
 extern crate rand;
