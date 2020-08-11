@@ -25,14 +25,13 @@ lazy_static! {
 // }
 
 fn rgbs_to_labs(c: &mut Criterion) {
-    c.bench_function("rgbs_to_labs", move |b| b.iter(|| lab::rgbs_to_labs(&RGBS)));
+    let test_name = if cfg!(all(target_arch = "x86_64", target_feature = "avx2")) {
+        "rgbs_to_labs_simd"
+    } else {
+        "rgbs_to_labs"
+    };
+    c.bench_function(test_name, move |b| b.iter(|| lab::rgbs_to_labs(&RGBS)));
 }
 
-fn rgbs_to_labs_simd(c: &mut Criterion) {
-    c.bench_function("rgbs_to_labs_simd", move |b| {
-        b.iter(|| lab::simd::rgbs_to_labs(&RGBS))
-    });
-}
-
-criterion_group!(benches, rgbs_to_labs, rgbs_to_labs_simd);
+criterion_group!(benches, rgbs_to_labs);
 criterion_main!(benches);
