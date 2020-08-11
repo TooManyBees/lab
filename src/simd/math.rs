@@ -1,10 +1,36 @@
 /*
 An almost-literal transliteration of AVX-optimized sin(), cos(), exp() and log()
-functions by LISC, available at http://software-lisc.fbk.eu/avx_mathfun/
+functions by Giovanni Garberoglio, available at http://software-lisc.fbk.eu/avx_mathfun/
+
+Copyright (C) 2012 Giovanni Garberoglio
+Interdisciplinary Laboratory for Computational Science (LISC)
+Fondazione Bruno Kessler and University of Trento
+via Sommarive, 18
+I-38123 Trento (Italy)
 
 which was itself a translation of Simple SSE and SSE2 optimized sin, cos, log,
-and exp by Julien Pommier, available at http://gruntthepeon.free.fr/ssemath/ and
-licensed under the zlib license (https://en.wikipedia.org/wiki/Zlib_License)
+and exp by Julien Pommier, available at http://gruntthepeon.free.fr/ssemath/
+
+Copyright (C) 2007  Julien Pommier
+
+Both are provided under the zlib license:
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
 */
 
 use std::mem;
