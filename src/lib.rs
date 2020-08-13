@@ -52,9 +52,38 @@ pub(crate) const EPSILON: f32 = 216.0 / 24389.0;
 pub(crate) const CBRT_EPSILON: f32 = 0.20689655172413796;
 
 fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
-    let r = rgb_to_xyz_map(rgb[0]);
-    let g = rgb_to_xyz_map(rgb[1]);
-    let b = rgb_to_xyz_map(rgb[2]);
+    rgb_to_xyz_inner(
+        rgb[0] as f32,
+        rgb[1] as f32,
+        rgb[2] as f32,
+    )
+}
+
+fn rgb_to_xyz_normalized(rgb: &[f32; 3]) -> [f32; 3] {
+    rgb_to_xyz_inner(
+        rgb[0] * 255.0,
+        rgb[1] * 255.0,
+        rgb[2] * 255.0,
+    )
+}
+
+#[inline]
+fn rgb_to_xyz_inner(r: f32, g: f32, b: f32) -> [f32; 3] {
+    #[inline]
+    fn rgb_to_xyz_map(c: f32) -> f32 {
+        if c > 10.0 {
+            const A: f32 = 0.055 * 255.0;
+            const D: f32 = 1.055 * 255.0;
+            ((c + A) / D).powf(2.4)
+        } else {
+            const D: f32 = 12.92 * 255.0;
+            c / D
+        }
+    }
+
+    let r = rgb_to_xyz_map(r);
+    let g = rgb_to_xyz_map(g);
+    let b = rgb_to_xyz_map(b);
 
     [
         r * 0.4124564390896921 + g * 0.357576077643909 + b * 0.18043748326639894,
@@ -63,19 +92,16 @@ fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
     ]
 }
 
-#[inline]
-fn rgb_to_xyz_map(c: u8) -> f32 {
-    if c > 10 {
-        const A: f32 = 0.055 * 255.0;
-        const D: f32 = 1.055 * 255.0;
-        ((c as f32 + A) / D).powf(2.4)
-    } else {
-        const D: f32 = 12.92 * 255.0;
-        c as f32 / D
-    }
-}
-
 fn xyz_to_lab(xyz: [f32; 3]) -> Lab {
+    #[inline]
+    fn xyz_to_lab_map(c: f32) -> f32 {
+        if c > EPSILON {
+            c.powf(1.0 / 3.0)
+        } else {
+            (KAPPA * c + 16.0) / 116.0
+        }
+    }
+
     let x = xyz_to_lab_map(xyz[0] / 0.95047);
     let y = xyz_to_lab_map(xyz[1]);
     let z = xyz_to_lab_map(xyz[2] / 1.08883);
@@ -84,15 +110,6 @@ fn xyz_to_lab(xyz: [f32; 3]) -> Lab {
         l: (116.0 * y) - 16.0,
         a: 500.0 * (x - y),
         b: 200.0 * (y - z),
-    }
-}
-
-#[inline]
-fn xyz_to_lab_map(c: f32) -> f32 {
-    if c > EPSILON {
-        c.powf(1.0 / 3.0)
-    } else {
-        (KAPPA * c + 16.0) / 116.0
     }
 }
 
@@ -120,6 +137,15 @@ fn lab_to_xyz(lab: &Lab) -> [f32; 3] {
 }
 
 fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
+    let rgb = xyz_to_rgb_normalized(xyz);
+    [
+        (rgb[0] * 255.0).round() as u8,
+        (rgb[1] * 255.0).round() as u8,
+        (rgb[2] * 255.0).round() as u8,
+    ]
+}
+
+fn xyz_to_rgb_normalized(xyz: [f32; 3]) -> [f32; 3] {
     let x = xyz[0];
     let y = xyz[1];
     let z = xyz[2];
@@ -128,19 +154,18 @@ fn xyz_to_rgb(xyz: [f32; 3]) -> [u8; 3] {
     let g = x * -0.9692660305051868 + y * 1.8760108454466942 + z * 0.04155601753034984;
     let b = x * 0.05564343095911469 - y * 0.20402591351675387 + z * 1.0572251882231791;
 
-    [xyz_to_rgb_map(r), xyz_to_rgb_map(g), xyz_to_rgb_map(b)]
-}
+    #[inline]
+    fn xyz_to_rgb_map(c: f32) -> f32 {
+        (if c > 0.0031308 {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        } else {
+            12.92 * c
+        })
+        .min(1.0)
+        .max(0.0)
+    }
 
-#[inline]
-fn xyz_to_rgb_map(c: f32) -> u8 {
-    ((if c > 0.0031308 {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
-    } else {
-        12.92 * c
-    }) * 255.0)
-        .round()
-        .min(255.0)
-        .max(0.0) as u8
+    [xyz_to_rgb_map(r), xyz_to_rgb_map(g), xyz_to_rgb_map(b)]
 }
 
 /// Convenience function to map a slice of RGB values to Lab values in serial
@@ -206,6 +231,10 @@ impl Lab {
         xyz_to_lab(rgb_to_xyz(rgb))
     }
 
+    pub fn from_rgb_normalized(rgb: &[f32; 3]) -> Self {
+        xyz_to_lab(rgb_to_xyz_normalized(rgb))
+    }
+
     /// Constructs a new `Lab` from a four-element array of `u8`s
     ///
     /// The `Lab` struct does not store alpha channel information, so the last
@@ -222,6 +251,10 @@ impl Lab {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
     }
 
+    pub fn from_rgba_normalized(rgba: &[f32; 4]) -> Self {
+        Lab::from_rgb_normalized(&[rgba[0], rgba[1], rgba[2]])
+    }
+
     /// Returns the `Lab`'s color in RGB, in a 3-element array.
     ///
     /// # Examples
@@ -233,6 +266,10 @@ impl Lab {
     /// ```
     pub fn to_rgb(&self) -> [u8; 3] {
         xyz_to_rgb(lab_to_xyz(&self))
+    }
+
+    pub fn to_rgb_normalized(&self) -> [f32; 3] {
+        xyz_to_rgb_normalized(lab_to_xyz(&self))
     }
 
     /// Measures the perceptual distance between the colors of one `Lab`
