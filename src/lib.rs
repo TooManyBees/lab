@@ -163,7 +163,7 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     let labs = simd::rgbs_to_labs(rgbs);
 
     #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let labs = rgbs.iter().map(Lab::from_rgb).collect();
+    let labs = __scalar::rgbs_to_labs(rgbs);
 
     labs
 }
@@ -188,9 +188,24 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     let rgbs = simd::labs_to_rgbs(labs);
 
     #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let rgbs = labs.iter().map(Lab::to_rgb).collect();
+    let rgbs = __scalar::labs_to_rgbs(labs);
 
     rgbs
+}
+
+#[doc(hidden)]
+pub mod __scalar {
+    use Lab;
+
+    #[inline]
+    pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
+        labs.iter().map(Lab::to_rgb).collect()
+    }
+
+    #[inline]
+    pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
+        rgbs.iter().map(Lab::from_rgb).collect()
+    }
 }
 
 impl Lab {
