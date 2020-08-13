@@ -246,6 +246,7 @@ impl Lab {
         xyz_to_lab(rgb_to_xyz(rgb))
     }
 
+    #[doc(hidden)]
     pub fn from_rgb_normalized(rgb: &[f32; 3]) -> Self {
         xyz_to_lab(rgb_to_xyz_normalized(rgb))
     }
@@ -266,6 +267,7 @@ impl Lab {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
     }
 
+    #[doc(hidden)]
     pub fn from_rgba_normalized(rgba: &[f32; 4]) -> Self {
         Lab::from_rgb_normalized(&[rgba[0], rgba[1], rgba[2]])
     }
@@ -283,6 +285,7 @@ impl Lab {
         xyz_to_rgb(lab_to_xyz(&self))
     }
 
+    #[doc(hidden)]
     pub fn to_rgb_normalized(&self) -> [f32; 3] {
         xyz_to_rgb_normalized(lab_to_xyz(&self))
     }
