@@ -17,25 +17,7 @@
 //! To convert slices of values
 //! * `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
 //! * `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
-//! To convert slices using SIMD (AVX, SSE 4.1) operations
-//! * `lab::simd::rgbs_to_labs`
-//! * `lab::simd::labs_to_rgbs`
 //!
-//! ## Parallelization concerns
-//! This crate makes no assumptions about how to parallelize work, so the above
-//! functions that convert slices do so in serial. Presently, parallelizing the
-//! functions that accept slices is a manual job of reimplementing
-//! them using their fundamental work function, and replacing one iterator method
-//! with its equivalent from Rayon.
-//!
-//! `lab::rgbs_to_labs` and `lab::labs_to_rgbs` are convenience functions for
-//! `rgbs.iter().map(Lab::from_rgb).collect()`, which can easily be parallelized
-//! with Rayon by replacing `iter()` with `par_iter()`.
-//!
-//! For the SIMD based functions, their smallest unit of work is done by the
-//! functions `lab::simd::rgbs_to_labs_chunk` and `lab::simd::labs_to_rgbs_chunk`
-//! which both accept exactly 8 elements. See their respective docs for examples
-//! on where to add Rayon methods.
 
 #![doc(html_root_url = "https://docs.rs/lab/0.7.1")]
 
@@ -51,8 +33,8 @@ extern crate lazy_static;
 #[cfg(test)]
 extern crate rand;
 
-#[cfg(target_arch = "x86_64")]
-pub mod simd;
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+mod simd;
 
 /// Struct representing a color in L\*a\*b\* space
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
@@ -177,7 +159,13 @@ fn xyz_to_rgb_map(c: f32) -> u8 {
 /// ```
 #[inline]
 pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
-    rgbs.iter().map(Lab::from_rgb).collect()
+    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+    let labs = simd::rgbs_to_labs(rgbs);
+
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+    let labs = rgbs.iter().map(Lab::from_rgb).collect();
+
+    labs
 }
 
 /// Convenience function to map a slice of Lab values to RGB values in serial
@@ -196,30 +184,16 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
 /// ```
 #[inline]
 pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-    labs.iter().map(Lab::to_rgb).collect()
+    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+    let rgbs = simd::labs_to_rgbs(labs);
+
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+    let rgbs = labs.iter().map(Lab::to_rgb).collect();
+
+    rgbs
 }
 
 impl Lab {
-    // pub fn from_rgbs(rgbs: &[[u8; 3]]) -> Vec<Self> {
-    //     #[cfg(target_arch = "x86_64")]
-    //     {
-    //         if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-    //             return simd::rgbs_to_labs(rgbs);
-    //         }
-    //     }
-    //     rgbs_to_labs(rgbs)
-    // }
-
-    // pub fn to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-    //     #[cfg(target_arch = "x86_64")]
-    //     {
-    //         if is_x86_feature_detected!("avx") && is_x86_feature_detected!("sse4.1") {
-    //             return simd::labs_to_rgbs(labs);
-    //         }
-    //     }
-    //     labs_to_rgbs(labs)
-    // }
-
     /// Constructs a new `Lab` from a three-element array of `u8`s
     ///
     /// # Examples
