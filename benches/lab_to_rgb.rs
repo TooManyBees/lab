@@ -25,13 +25,12 @@ lazy_static! {
 }
 
 fn labs_to_rgbs(c: &mut Criterion) {
-    let test_name = if cfg!(all(target_arch = "x86_64", target_feature = "avx2")) {
-        "labs_to_rgbs_simd"
-    } else {
-        "labs_to_rgbs"
-    };
-    c.bench_function(test_name, move |b| b.iter(|| lab::labs_to_rgbs(&LABS)));
+    c.bench_function("labs_to_rgbs", move |b| b.iter(|| lab::__scalar::labs_to_rgbs(&LABS)));
 }
 
-criterion_group!(benches, labs_to_rgbs);
+fn labs_to_rgbs_simd(c: &mut Criterion) {
+    c.bench_function("labs_to_rgbs_simd", move |b| b.iter(|| lab::labs_to_rgbs(&LABS)));
+}
+
+criterion_group!(benches, labs_to_rgbs, labs_to_rgbs_simd);
 criterion_main!(benches);
