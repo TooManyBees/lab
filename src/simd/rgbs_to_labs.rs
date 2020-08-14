@@ -33,7 +33,7 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     vs
 }
 
-pub fn rgb_slice_to_labs(bytes: &[u8]) -> Vec<Lab> {
+pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
     let chunks = bytes.chunks_exact(8 * 3);
     let remainder = chunks.remainder();
     let mut vs = chunks.fold(Vec::with_capacity(bytes.len() / 3), |mut v, bytes| {
@@ -62,7 +62,7 @@ pub fn rgbs_to_labs_chunk(rgbs: &[[u8; 3]]) -> [Lab; 8] {
 }
 
 unsafe fn slice_rgbs_to_slice_labs(rgbs: &[[u8; 3]]) -> [Lab; 8] {
-    let (r, g, b) = rgb_slice_to_simd(rgbs);
+    let (r, g, b) = rgb_bytes_to_simd(rgbs);
     let (x, y, z) = rgbs_to_xyzs(r, g, b);
     let (l, a, b) = xyzs_to_labs(x, y, z);
     simd_to_lab_array(l, a, b)
@@ -77,7 +77,7 @@ unsafe fn slice_bytes_to_slice_labs(bytes: &[u8]) -> [Lab; 8] {
 }
 
 #[inline]
-unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
+unsafe fn rgb_bytes_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
     let r = _mm256_set_ps(
         rgbs[0][0] as f32,
         rgbs[1][0] as f32,
@@ -295,7 +295,7 @@ mod test {
     }
 
     #[test]
-    fn test_simd_rgb_slice_to_labs() {
+    fn test_simd_rgb_bytes_to_labs() {
         // Assert that converting a slice of bytes and a slice of rgb triples
         // returns the same Lab values.
         let rgbs = vec![
@@ -320,7 +320,7 @@ mod test {
         ];
 
         let labs_from_triples = simd::rgbs_to_labs(&rgbs);
-        let labs_from_bytes = simd::rgb_slice_to_labs(&bytes);
+        let labs_from_bytes = simd::rgb_bytes_to_labs(&bytes);
         assert_eq!(labs_from_triples, labs_from_bytes);
     }
 

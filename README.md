@@ -32,8 +32,8 @@ To convert slices of values
 
 * `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
 * `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
-* `lab::rgb_slice_to_labs(bytes: &[u8]) -> Vec<Lab>`
-* `lab::labs_to_rgb_slice(labs: &[Lab]) -> Vec<u8>`
+* `lab::rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>`
+* `lab::labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8>`
 
 ```rust
 extern crate lab;
@@ -55,7 +55,7 @@ let labs = rgbs_to_labs(&rgbs);
 
 ```rust
 extern crate lab;
-use lab::rgb_slice_to_labs;
+use lab::rgb_bytes_to_labs;
 
 let rgbs = vec![
     0xFF, 0x69, 0xB6,
@@ -68,7 +68,7 @@ let rgbs = vec![
     0x76, 0x00, 0x89,
 ];
 
-let labs = rgb_slice_to_labs(&rgbs);
+let labs = rgb_bytes_to_labs(&rgbs);
 ```
 
 These functions will use x86_64 AVX2 instructions if compiled to a supported target.

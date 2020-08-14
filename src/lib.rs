@@ -34,12 +34,12 @@ To convert slices of values
 
 * `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
 * `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
-* `lab::rgb_slice_to_labs(bytes: &[u8]) -> Vec<Lab>`
-* `lab::labs_to_rgb_slice(labs: &[Lab]) -> Vec<u8>`
+* `lab::rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>`
+* `lab::labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8>`
 
 ```rust
 extern crate lab;
-use lab::{Lab, rgbs_to_labs};
+use lab::rgbs_to_labs;
 
 let rgbs = vec![
     [0xFF, 0x69, 0xB6],
@@ -57,7 +57,7 @@ let labs = rgbs_to_labs(&rgbs);
 
 ```rust
 extern crate lab;
-use lab::{Lab, rgb_slice_to_labs};
+use lab::rgb_bytes_to_labs;
 
 let rgbs = vec![
     0xFF, 0x69, 0xB6,
@@ -70,7 +70,7 @@ let rgbs = vec![
     0x76, 0x00, 0x89,
 ];
 
-let labs = rgb_slice_to_labs(&rgbs);
+let labs = rgb_bytes_to_labs(&rgbs);
 ```
 
 These functions will use x86_64 AVX2 instructions if compiled to a supported target.
@@ -253,12 +253,12 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     labs
 }
 
-pub fn rgb_slice_to_labs(bytes: &[u8]) -> Vec<Lab> {
+pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
     #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let labs = simd::rgb_slice_to_labs(bytes);
+    let labs = simd::rgb_bytes_to_labs(bytes);
 
     #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let labs = __scalar::rgb_slice_to_labs(bytes);
+    let labs = __scalar::rgb_bytes_to_labs(bytes);
 
     labs
 }
@@ -289,12 +289,12 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
 }
 
 #[inline]
-pub fn labs_to_rgb_slice(labs: &[Lab]) -> Vec<u8> {
+pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
     #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let bytes = simd::labs_to_rgb_slice(labs);
+    let bytes = simd::labs_to_rgb_bytes(labs);
 
     #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let bytes = __scalar::labs_to_rgb_slice(labs);
+    let bytes = __scalar::labs_to_rgb_bytes(labs);
 
     bytes
 }
@@ -310,7 +310,7 @@ pub mod __scalar {
     }
 
     #[inline]
-    pub fn labs_to_rgb_slice(labs: &[Lab]) -> Vec<u8> {
+    pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
         labs.iter()
             .map(Lab::to_rgb)
             .fold(Vec::with_capacity(labs.len() * 3),|mut acc, rgb| {
@@ -325,7 +325,7 @@ pub mod __scalar {
     }
 
     #[inline]
-    pub fn rgb_slice_to_labs(bytes: &[u8]) -> Vec<Lab> {
+    pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
         bytes.chunks_exact(3)
             .map(|rgb| rgb_to_lab(rgb[0], rgb[1], rgb[2]))
             .collect()

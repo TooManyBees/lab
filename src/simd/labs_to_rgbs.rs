@@ -38,7 +38,7 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     vs
 }
 
-pub fn labs_to_rgb_slice(labs: &[Lab]) -> Vec<u8> {
+pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
     let chunks = labs.chunks_exact(8);
     let remainder = chunks.remainder();
     let mut vs = chunks.fold(Vec::with_capacity(labs.len()), |mut v, labs| {
@@ -268,7 +268,7 @@ mod test {
     }
 
     #[test]
-    fn test_simd_labs_to_rgb_slice() {
+    fn test_simd_labs_to_rgb_bytes() {
         // Assert that returning a single slice of bytes returns the same values as
         // returning them in rgb triples.
         let labs = vec![
@@ -285,7 +285,7 @@ mod test {
             acc.extend_from_slice(rgb);
             acc
         });
-        let bytes = simd::labs_to_rgb_slice(&labs);
+        let bytes = simd::labs_to_rgb_bytes(&labs);
         assert_eq!(rgbs, bytes);
     }
 
