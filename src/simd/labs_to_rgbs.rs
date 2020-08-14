@@ -38,6 +38,31 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     vs
 }
 
+pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
+    let chunks = labs.chunks_exact(8);
+    let remainder = chunks.remainder();
+    let mut vs = chunks.fold(Vec::with_capacity(labs.len()), |mut v, labs| {
+        let rgbs = unsafe { slice_labs_to_rgb_bytes(labs) };
+        v.extend_from_slice(&rgbs);
+        v
+    });
+
+    if remainder.len() > 0 {
+        let labs: Vec<Lab> = remainder
+            .iter()
+            .cloned()
+            .chain(iter::repeat(BLANK_LAB))
+            .take(8)
+            .collect();
+
+        let rgbs = unsafe { slice_labs_to_rgb_bytes(&labs) };
+        vs.extend_from_slice(&rgbs[..remainder.len()]);
+    }
+
+    vs
+}
+
+#[allow(dead_code)]
 pub fn labs_to_rgbs_chunk(labs: &[Lab]) -> [[u8; 3]; 8] {
     unsafe { slice_labs_to_slice_rgbs(labs) }
 }
@@ -48,6 +73,14 @@ unsafe fn slice_labs_to_slice_rgbs(labs: &[Lab]) -> [[u8; 3]; 8] {
     let (x, y, z) = labs_to_xyzs(l, a, b);
     let (r, g, b) = xyzs_to_rgbs(x, y, z);
     simd_to_rgb_array(r, g, b)
+}
+
+#[inline]
+unsafe fn slice_labs_to_rgb_bytes(labs: &[Lab]) -> [u8; 8 * 3] {
+    let (l, a, b) = lab_slice_to_simd(labs);
+    let (x, y, z) = labs_to_xyzs(l, a, b);
+    let (r, g, b) = xyzs_to_rgbs(x, y, z);
+    simd_to_rgb_bytes(r, g, b)
 }
 
 #[inline]
@@ -191,7 +224,27 @@ unsafe fn simd_to_rgb_array(r: __m256, g: __m256, b: __m256) -> [[u8; 3]; 8] {
     mem::transmute(rgbs)
 }
 
-#[cfg(all(target_cpu = "x86_64", target_feature = "avx"))]
+#[inline]
+unsafe fn simd_to_rgb_bytes(r: __m256, g: __m256, b: __m256) -> [u8; 8 * 3] {
+    let r: [f32; 8] = mem::transmute(_mm256_round_ps(r, _MM_FROUND_TO_NEAREST_INT));
+    let g: [f32; 8] = mem::transmute(_mm256_round_ps(g, _MM_FROUND_TO_NEAREST_INT));
+    let b: [f32; 8] = mem::transmute(_mm256_round_ps(b, _MM_FROUND_TO_NEAREST_INT));
+
+    let mut bytes: [mem::MaybeUninit<u8>; 8 * 3] = mem::MaybeUninit::uninit().assume_init();
+    for (((&r, &g), &b), rgb) in r
+        .iter()
+        .zip(g.iter())
+        .zip(b.iter())
+        .rev()
+        .zip(bytes.chunks_exact_mut(3))
+    {
+        rgb[0] = mem::MaybeUninit::new(r as u8);
+        rgb[1] = mem::MaybeUninit::new(g as u8);
+        rgb[2] = mem::MaybeUninit::new(b as u8);
+    }
+    mem::transmute(bytes)
+}
+
 #[cfg(test)]
 mod test {
     use super::super::super::{labs_to_rgbs, simd, Lab};
@@ -212,6 +265,28 @@ mod test {
         let labs = simd::rgbs_to_labs(&RGBS);
         let rgbs = simd::labs_to_rgbs(&labs);
         assert_eq!(rgbs.as_slice(), RGBS.as_slice());
+    }
+
+    #[test]
+    fn test_simd_labs_to_rgb_bytes() {
+        // Assert that returning a single slice of bytes returns the same values as
+        // returning them in rgb triples.
+        let labs = vec![
+            Lab { l: 65.55042, a: 64.48197, b: -11.685503 },
+            Lab { l: 48.25341, a: 74.3235, b: 62.362576 },
+            Lab { l: 69.485344, a: 36.825745, b: 75.4871 },
+            Lab { l: 93.01275, a: -13.856977, b: 91.47719 },
+            Lab { l: 46.70882, a: -50.29225, b: 42.086266 },
+            Lab { l: 70.86147, a: -38.99568, b: -11.459422 },
+            Lab { l: 40.166237, a: 55.847153, b: -94.75334 },
+            Lab { l: 28.53371, a: 58.779716, b: -44.23661 },
+        ];
+        let rgbs = simd::labs_to_rgbs(&labs).iter().fold(Vec::with_capacity(labs.len() * 3), |mut acc, rgb| {
+            acc.extend_from_slice(rgb);
+            acc
+        });
+        let bytes = simd::labs_to_rgb_bytes(&labs);
+        assert_eq!(rgbs, bytes);
     }
 
     #[test]

@@ -1,25 +1,85 @@
-//! # Lab
-//!
-//! Tools for converting RGB colors to L\*a\*b\* measurements.
-//!
-//! RGB colors, for this crate at least, are considered to be an array
-//! of `u8` values (`[u8; 3]`), while L\*a\*b\* colors are represented
-//! by its own struct that uses `f32` values.
-//!
-//! # Usage
-//! ## Converting single values
-//! To convert a single value, use one of the functions
-//! * `lab::Lab::from_rgb(rgb: &[u8; 3]) -> Lab`
-//! * `lab::Lab::from_rgba(rgba: &[u8; 4]) -> Lab` (drops the fourth alpha byte)
-//! * `lab::Lab::to_rgb(&self) -> [u8; 3]`
-//!
-//! ## Converting multiple values
-//! To convert slices of values
-//! * `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
-//! * `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
-//!
-
 #![doc(html_root_url = "https://docs.rs/lab/0.7.1")]
+
+/*!
+
+# Lab
+
+Tools for converting RGB colors to L\*a\*b\* measurements.
+
+RGB colors, for this crate at least, are considered to be composed of `u8`
+values from 0 to 255, while L\*a\*b\* colors are represented by its own struct
+that uses `f32` values.
+
+# Usage
+
+## Converting single values
+
+To convert a single value, use one of the functions
+
+* `lab::Lab::from_rgb(rgb: &[u8; 3]) -> Lab`
+* `lab::Lab::from_rgba(rgba: &[u8; 4]) -> Lab` (drops the fourth alpha byte)
+* `lab::Lab::to_rgb(&self) -> [u8; 3]`
+
+```rust
+extern crate lab;
+use lab::Lab;
+
+let pink_in_lab = Lab::from_rgb(&[253, 120, 138]);
+// Lab { l: 66.639084, a: 52.251457, b: 14.860654 }
+```
+
+## Converting multiple values
+
+To convert slices of values
+
+* `lab::rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>`
+* `lab::labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>`
+* `lab::rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>`
+* `lab::labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8>`
+
+```rust
+extern crate lab;
+use lab::rgbs_to_labs;
+
+let rgbs = vec![
+    [0xFF, 0x69, 0xB6],
+    [0xE7, 0x00, 0x00],
+    [0xFF, 0x8C, 0x00],
+    [0xFF, 0xEF, 0x00],
+    [0x00, 0x81, 0x1F],
+    [0x00, 0xC1, 0xC1],
+    [0x00, 0x44, 0xFF],
+    [0x76, 0x00, 0x89],
+];
+
+let labs = rgbs_to_labs(&rgbs);
+```
+
+```rust
+extern crate lab;
+use lab::rgb_bytes_to_labs;
+
+let rgbs = vec![
+    0xFF, 0x69, 0xB6,
+    0xE7, 0x00, 0x00,
+    0xFF, 0x8C, 0x00,
+    0xFF, 0xEF, 0x00,
+    0x00, 0x81, 0x1F,
+    0x00, 0xC1, 0xC1,
+    0x00, 0x44, 0xFF,
+    0x76, 0x00, 0x89,
+];
+
+let labs = rgb_bytes_to_labs(&rgbs);
+```
+
+These functions will use x86_64 AVX2 instructions if compiled to a supported target.
+
+## Minimum Rust version
+
+Lab 0.7.0 requires Rust >= 1.31.0 for the [chunks_exact](https://doc.rust-lang.org/std/primitive.slice.html#method.chunks_exact) slice method
+
+*/
 
 #[cfg(test)]
 #[macro_use]
@@ -51,12 +111,12 @@ pub(crate) const KAPPA: f32 = 24389.0 / 27.0;
 pub(crate) const EPSILON: f32 = 216.0 / 24389.0;
 pub(crate) const CBRT_EPSILON: f32 = 0.20689655172413796;
 
-fn rgb_to_xyz(rgb: &[u8; 3]) -> [f32; 3] {
-    rgb_to_xyz_inner(
-        rgb[0] as f32,
-        rgb[1] as f32,
-        rgb[2] as f32,
-    )
+fn rgb_to_lab(r: u8, g: u8, b: u8) -> Lab {
+    xyz_to_lab(rgb_to_xyz(r, g, b))
+}
+
+fn rgb_to_xyz(r: u8, g: u8, b: u8) -> [f32; 3] {
+    rgb_to_xyz_inner(r as f32, g as f32, b as f32)
 }
 
 fn rgb_to_xyz_normalized(rgb: &[f32; 3]) -> [f32; 3] {
@@ -193,6 +253,16 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     labs
 }
 
+pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+    let labs = simd::rgb_bytes_to_labs(bytes);
+
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+    let labs = __scalar::rgb_bytes_to_labs(bytes);
+
+    labs
+}
+
 /// Convenience function to map a slice of Lab values to RGB values in serial
 ///
 /// # Example
@@ -218,9 +288,21 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     rgbs
 }
 
+#[inline]
+pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
+    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+    let bytes = simd::labs_to_rgb_bytes(labs);
+
+    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+    let bytes = __scalar::labs_to_rgb_bytes(labs);
+
+    bytes
+}
+
 #[doc(hidden)]
 pub mod __scalar {
     use Lab;
+    use rgb_to_lab;
 
     #[inline]
     pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
@@ -228,8 +310,25 @@ pub mod __scalar {
     }
 
     #[inline]
+    pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
+        labs.iter()
+            .map(Lab::to_rgb)
+            .fold(Vec::with_capacity(labs.len() * 3),|mut acc, rgb| {
+                acc.extend_from_slice(&rgb);
+                acc
+            })
+    }
+
+    #[inline]
     pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
         rgbs.iter().map(Lab::from_rgb).collect()
+    }
+
+    #[inline]
+    pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes.chunks_exact(3)
+            .map(|rgb| rgb_to_lab(rgb[0], rgb[1], rgb[2]))
+            .collect()
     }
 }
 
@@ -243,7 +342,7 @@ impl Lab {
     /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
-        xyz_to_lab(rgb_to_xyz(rgb))
+        rgb_to_lab(rgb[0], rgb[1], rgb[2])
     }
 
     #[doc(hidden)]

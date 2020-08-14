@@ -33,19 +33,51 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     vs
 }
 
+pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+    let chunks = bytes.chunks_exact(8 * 3);
+    let remainder = chunks.remainder();
+    let mut vs = chunks.fold(Vec::with_capacity(bytes.len() / 3), |mut v, bytes| {
+        let labs = unsafe { slice_bytes_to_slice_labs(bytes) };
+        v.extend_from_slice(&labs);
+        v
+    });
+
+    if remainder.len() > 0 {
+        let bytes: Vec<u8> = remainder
+            .iter()
+            .cloned()
+            .chain(iter::repeat(0u8))
+            .take(8 * 3)
+            .collect();
+        let labs = unsafe { slice_bytes_to_slice_labs(&bytes) };
+        vs.extend_from_slice(&labs[..remainder.len() / 3]);
+    }
+
+    vs
+}
+
+#[allow(dead_code)]
 pub fn rgbs_to_labs_chunk(rgbs: &[[u8; 3]]) -> [Lab; 8] {
     unsafe { slice_rgbs_to_slice_labs(rgbs) }
 }
 
 unsafe fn slice_rgbs_to_slice_labs(rgbs: &[[u8; 3]]) -> [Lab; 8] {
-    let (r, g, b) = rgb_slice_to_simd(rgbs);
+    let (r, g, b) = rgb_bytes_to_simd(rgbs);
     let (x, y, z) = rgbs_to_xyzs(r, g, b);
     let (l, a, b) = xyzs_to_labs(x, y, z);
     simd_to_lab_array(l, a, b)
 }
 
 #[inline]
-unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
+unsafe fn slice_bytes_to_slice_labs(bytes: &[u8]) -> [Lab; 8] {
+    let (r, g, b) = byte_slice_to_simd(bytes);
+    let (x, y, z) = rgbs_to_xyzs(r, g, b);
+    let (l, a, b) = xyzs_to_labs(x, y, z);
+    simd_to_lab_array(l, a, b)
+}
+
+#[inline]
+unsafe fn rgb_bytes_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
     let r = _mm256_set_ps(
         rgbs[0][0] as f32,
         rgbs[1][0] as f32,
@@ -75,6 +107,41 @@ unsafe fn rgb_slice_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
         rgbs[5][2] as f32,
         rgbs[6][2] as f32,
         rgbs[7][2] as f32,
+    );
+    (r, g, b)
+}
+
+#[inline]
+unsafe fn byte_slice_to_simd(bytes: &[u8]) -> (__m256, __m256, __m256) {
+    let r = _mm256_set_ps(
+        bytes[3*0] as f32,
+        bytes[3*1] as f32,
+        bytes[3*2] as f32,
+        bytes[3*3] as f32,
+        bytes[3*4] as f32,
+        bytes[3*5] as f32,
+        bytes[3*6] as f32,
+        bytes[3*7] as f32,
+    );
+    let g = _mm256_set_ps(
+        bytes[3*0 + 1] as f32,
+        bytes[3*1 + 1] as f32,
+        bytes[3*2 + 1] as f32,
+        bytes[3*3 + 1] as f32,
+        bytes[3*4 + 1] as f32,
+        bytes[3*5 + 1] as f32,
+        bytes[3*6 + 1] as f32,
+        bytes[3*7 + 1] as f32,
+    );
+    let b = _mm256_set_ps(
+        bytes[3*0 + 2] as f32,
+        bytes[3*1 + 2] as f32,
+        bytes[3*2 + 2] as f32,
+        bytes[3*3 + 2] as f32,
+        bytes[3*4 + 2] as f32,
+        bytes[3*5 + 2] as f32,
+        bytes[3*6 + 2] as f32,
+        bytes[3*7 + 2] as f32,
     );
     (r, g, b)
 }
@@ -194,7 +261,6 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
 //     (r, g, b)
 // }
 
-#[cfg(all(target_cpu = "x86_64", target_feature = "avx"))]
 #[cfg(test)]
 mod test {
     use super::super::super::{rgbs_to_labs, simd};
@@ -226,6 +292,36 @@ mod test {
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
         assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00002);
+    }
+
+    #[test]
+    fn test_simd_rgb_bytes_to_labs() {
+        // Assert that converting a slice of bytes and a slice of rgb triples
+        // returns the same Lab values.
+        let rgbs = vec![
+            [253, 120, 138], // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+            [25, 20, 22],    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
+            [63, 81, 181],   // Lab { l: 38.336494, a: 25.586218, b: -55.288517 }
+            [21, 132, 102],  // Lab { l: 49.033485, a: -36.959187, b: 7.9363704 }
+            [255, 193, 7],   // Lab { l: 81.519325, a: 9.4045105, b: 82.69791 }
+            [233, 30, 99],   // Lab { l: 50.865776, a: 74.61989, b: 15.343171 }
+            [155, 96, 132],  // Lab { l: 48.260345, a: 29.383003, b: -9.950054 }
+            [249, 165, 33],  // Lab { l: 74.29188, a: 21.827251, b: 72.75864 }
+        ];
+        let bytes = vec![
+            253, 120, 138, // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
+            25, 20, 22,    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
+            63, 81, 181,   // Lab { l: 38.336494, a: 25.586218, b: -55.288517 }
+            21, 132, 102,  // Lab { l: 49.033485, a: -36.959187, b: 7.9363704 }
+            255, 193, 7,   // Lab { l: 81.519325, a: 9.4045105, b: 82.69791 }
+            233, 30, 99,   // Lab { l: 50.865776, a: 74.61989, b: 15.343171 }
+            155, 96, 132,  // Lab { l: 48.260345, a: 29.383003, b: -9.950054 }
+            249, 165, 33,  // Lab { l: 74.29188, a: 21.827251, b: 72.75864 }
+        ];
+
+        let labs_from_triples = simd::rgbs_to_labs(&rgbs);
+        let labs_from_bytes = simd::rgb_bytes_to_labs(&bytes);
+        assert_eq!(labs_from_triples, labs_from_bytes);
     }
 
     #[test]
