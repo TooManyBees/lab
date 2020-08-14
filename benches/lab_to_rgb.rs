@@ -25,12 +25,20 @@ lazy_static! {
 }
 
 fn labs_to_rgbs(c: &mut Criterion) {
-    c.bench_function("labs_to_rgbs", move |b| b.iter(|| lab::__scalar::labs_to_rgbs(&LABS)));
+    c.bench_function("[Lab] -> [RGB]", move |b| b.iter(|| lab::__scalar::labs_to_rgbs(&LABS)));
+}
+
+fn labs_to_rgb_slice(c: &mut Criterion) {
+    c.bench_function("[Lab] -> [u8]", move |b| b.iter(|| lab::__scalar::labs_to_rgb_slice(&LABS)));
 }
 
 fn labs_to_rgbs_simd(c: &mut Criterion) {
-    c.bench_function("labs_to_rgbs_simd", move |b| b.iter(|| lab::labs_to_rgbs(&LABS)));
+    c.bench_function("[Lab] -> [RGB] (simd)", move |b| b.iter(|| lab::labs_to_rgbs(&LABS)));
 }
 
-criterion_group!(benches, labs_to_rgbs, labs_to_rgbs_simd);
+fn labs_to_rgb_slice_simd(c: &mut Criterion) {
+    c.bench_function("[Lab] -> [u8] (simd)", move |b| b.iter(|| lab::labs_to_rgb_slice(&LABS)));
+}
+
+criterion_group!(benches, labs_to_rgbs, labs_to_rgb_slice, labs_to_rgbs_simd, labs_to_rgb_slice_simd);
 criterion_main!(benches);

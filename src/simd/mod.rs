@@ -8,5 +8,13 @@ mod rgbs_to_labs;
 mod math;
 #[cfg(test)] mod approx_impl;
 
-pub use self::labs_to_rgbs::{labs_to_rgbs, labs_to_rgbs_chunk};
-pub use self::rgbs_to_labs::{rgbs_to_labs, rgbs_to_labs_chunk};
+pub use self::labs_to_rgbs::{
+    labs_to_rgbs,
+    labs_to_rgb_slice,
+    labs_to_rgbs_chunk,
+};
+pub use self::rgbs_to_labs::{
+    rgbs_to_labs,
+    rgb_slice_to_labs,
+    rgbs_to_labs_chunk,
+};
