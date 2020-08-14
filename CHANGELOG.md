@@ -1,3 +1,13 @@
+# 0.8.0
+
+* Speed up AVX2 code path, primarily by bringing in an AVX2 impl of `powf`,
+  `log`, and `exp`
+* Remove `simd` as a public module
+* `rgbs_to_labs` and `labs_to_rgbs`: uses AVX2 code paths when compiled on a
+  target that supports it
+* `rgb_bytes_to_labs` and `labs_to_rgb_bytes`: works with RGB triples in a flat
+  `&[u8]` instead of `&[[u8; 3]]`
+
 # 0.7.0
 
 * add convenience methods for converting slices of labs/rgbs
