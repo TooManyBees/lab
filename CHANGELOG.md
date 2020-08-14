@@ -1,3 +1,7 @@
+# 0.8.1
+
+* Fix a bug in AVX2 path of `labs_to_rgb_bytes`
+
 # 0.8.0
 
 * Speed up AVX2 code path, primarily by bringing in an AVX2 impl of `powf`,

@@ -42,8 +42,8 @@ pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
     let chunks = labs.chunks_exact(8);
     let remainder = chunks.remainder();
     let mut vs = chunks.fold(Vec::with_capacity(labs.len()), |mut v, labs| {
-        let rgbs = unsafe { slice_labs_to_rgb_bytes(labs) };
-        v.extend_from_slice(&rgbs);
+        let bytes = unsafe { slice_labs_to_rgb_bytes(labs) };
+        v.extend_from_slice(&bytes);
         v
     });
 
@@ -55,8 +55,8 @@ pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
             .take(8)
             .collect();
 
-        let rgbs = unsafe { slice_labs_to_rgb_bytes(&labs) };
-        vs.extend_from_slice(&rgbs[..remainder.len()]);
+        let bytes = unsafe { slice_labs_to_rgb_bytes(&labs) };
+        vs.extend_from_slice(&bytes[..remainder.len() * 3]);
     }
 
     vs

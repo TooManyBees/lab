@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/lab/0.8.0")]
+#![doc(html_root_url = "https://docs.rs/lab/0.8.1")]
 
 /*!
 
@@ -253,6 +253,20 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     labs
 }
 
+/// RGB to Lab conversion that operates on a flat `&[u8]` of consecutive RGB triples.
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, rgb_bytes_to_labs};
+/// let rgbs = &[255u8, 0, 0, 255, 0, 255, 0, 255, 255];
+/// let labs = lab::rgb_bytes_to_labs(rgbs);
+/// assert_eq!(labs, vec![
+///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 }
+/// ]);
+/// ```
 pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
     #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
     let labs = simd::rgb_bytes_to_labs(bytes);
@@ -288,6 +302,20 @@ pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
     rgbs
 }
 
+/// Lab to RGB conversion that returns RGB triples flattened into a `Vec<u8>`
+///
+/// # Example
+/// ```
+/// # extern crate lab;
+/// # use lab::{Lab, labs_to_rgb_bytes};
+/// let labs = &[
+///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
+/// ];
+/// let rgb_bytes = lab::labs_to_rgb_bytes(labs);
+/// assert_eq!(rgb_bytes, vec![0, 255, 255, 255, 0, 255, 255, 255, 0]);
+/// ```
 #[inline]
 pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
     #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
