@@ -3,6 +3,7 @@
 [![Lab crate](https://img.shields.io/crates/v/lab.svg)](https://crates.io/crates/lab)
 [![Lab documentation](https://docs.rs/lab/badge.svg)](https://docs.rs/lab)
 ![minimum rustc 1.31](https://img.shields.io/badge/rustc-1.36+-red.svg)
+[![TravisCI Build Status](https://travis-ci.com/TooManyBees/lab.svg)](https://travis-ci.com/github/TooManyBees/lab)
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/TooManyBees/lab?branch=master&svg=true)](https://ci.appveyor.com/project/TooManyBees/lab)
 
 Tools for converting RGB colors to L\*a\*b\* measurements.
