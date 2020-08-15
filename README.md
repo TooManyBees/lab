@@ -2,7 +2,7 @@
 
 [![Lab crate](https://img.shields.io/crates/v/lab.svg)](https://crates.io/crates/lab)
 [![Lab documentation](https://docs.rs/lab/badge.svg)](https://docs.rs/lab)
-![minimum rustc 1.31](https://img.shields.io/badge/rustc-1.31+-red.svg)
+![minimum rustc 1.31](https://img.shields.io/badge/rustc-1.36+-red.svg)
 [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/TooManyBees/lab?branch=master&svg=true)](https://ci.appveyor.com/project/TooManyBees/lab)
 
 Tools for converting RGB colors to L\*a\*b\* measurements.
@@ -75,3 +75,9 @@ let labs = rgb_bytes_to_labs(&rgbs);
 ```
 
 These functions will use x86_64 AVX2 instructions if compiled to a supported target.
+
+## Minimum Rust version
+
+Lab 0.8.0 requires Rust >= 1.36.0 for the [MaybeUninit](https://doc.rust-lang.org/std/mem/union.MaybeUninit.html) struct
+
+Lab 0.7.0 requires Rust >= 1.31.0 for the [chunks_exact](https://doc.rust-lang.org/std/primitive.slice.html#method.chunks_exact) slice method
