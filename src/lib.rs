@@ -468,20 +468,16 @@ mod tests {
 
     #[test]
     fn test_from_rgb() {
-        for test in COLOURS.iter() {
-            assert_eq!(test.1, Lab::from_rgb(&test.0));
-            assert_eq!(
-                test.1,
-                Lab::from_rgba(&[test.0[0], test.0[1], test.0[2], 255])
-            );
-        }
+        let expected: Vec<_> = COLOURS.iter().map(|(_, lab)| *lab).collect();
+        let actual: Vec<_> = COLOURS.iter().map(|(rgb, _)| Lab::from_rgb(rgb)).collect();
+        assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_to_rgb() {
-        for test in COLOURS.iter() {
-            assert_eq!(test.0, test.1.to_rgb());
-        }
+        let expected: Vec<_> = COLOURS.iter().map(|(rgb, _)| *rgb).collect();
+        let actual: Vec<_> = COLOURS.iter().map(|(_, lab)| lab.to_rgb()).collect();
+        assert_eq!(expected, actual);
     }
 
     #[test]
