@@ -8,6 +8,9 @@ jobs:
     # environment:
 
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "6f:99:fd:b0:f7:5d:47:bb:da:01:b6:6c:98:f1:6c:d6"
       - checkout
       - restore_cache:
           key: project-cache
