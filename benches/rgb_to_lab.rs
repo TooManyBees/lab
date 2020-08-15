@@ -15,28 +15,43 @@ lazy_static! {
         let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
         rng.sample_iter(&Standard).take(512).collect()
     };
-
-    static ref RGBS_FLAT: Vec<u8> = RGBS.iter().fold(Vec::with_capacity(RGBS.len() * 3), |mut acc, rgb| {
-        acc.extend_from_slice(rgb);
-        acc
-    });
+    static ref RGBS_FLAT: Vec<u8> =
+        RGBS.iter()
+            .fold(Vec::with_capacity(RGBS.len() * 3), |mut acc, rgb| {
+                acc.extend_from_slice(rgb);
+                acc
+            });
 }
 
 fn rgbs_to_labs(c: &mut Criterion) {
-    c.bench_function("[RGB] -> [Lab]", move |b| b.iter(|| lab::__scalar::rgbs_to_labs(&RGBS)));
+    c.bench_function("[RGB] -> [Lab]", move |b| {
+        b.iter(|| lab::__scalar::rgbs_to_labs(&RGBS))
+    });
 }
 
 fn rgb_bytes_to_labs(c: &mut Criterion) {
-    c.bench_function("[u8] -> [Lab]", move |b| b.iter(|| lab::__scalar::rgb_bytes_to_labs(&RGBS_FLAT)));
+    c.bench_function("[u8] -> [Lab]", move |b| {
+        b.iter(|| lab::__scalar::rgb_bytes_to_labs(&RGBS_FLAT))
+    });
 }
 
 fn rgbs_to_labs_simd(c: &mut Criterion) {
-    c.bench_function("[RGB] -> [Lab] (simd)", move |b| b.iter(|| lab::rgbs_to_labs(&RGBS)));
+    c.bench_function("[RGB] -> [Lab] (simd)", move |b| {
+        b.iter(|| lab::rgbs_to_labs(&RGBS))
+    });
 }
 
 fn rgb_bytes_to_labs_simd(c: &mut Criterion) {
-    c.bench_function("[u8] -> [Lab] (simd)", move |b| b.iter(|| lab::rgb_bytes_to_labs(&RGBS_FLAT)));
+    c.bench_function("[u8] -> [Lab] (simd)", move |b| {
+        b.iter(|| lab::rgb_bytes_to_labs(&RGBS_FLAT))
+    });
 }
 
-criterion_group!(benches, rgbs_to_labs, rgb_bytes_to_labs, rgbs_to_labs_simd, rgb_bytes_to_labs_simd);
+criterion_group!(
+    benches,
+    rgbs_to_labs,
+    rgb_bytes_to_labs,
+    rgbs_to_labs_simd,
+    rgb_bytes_to_labs_simd
+);
 criterion_main!(benches);

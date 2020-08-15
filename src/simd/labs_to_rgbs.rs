@@ -1,5 +1,5 @@
-use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
 use crate::simd::math::powf256_ps;
+use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{f32, iter, mem};
 
@@ -271,6 +271,7 @@ mod test {
     fn test_simd_labs_to_rgb_bytes() {
         // Assert that returning a single slice of bytes returns the same values as
         // returning them in rgb triples.
+        #[rustfmt::skip]
         let labs = vec![
             Lab { l: 65.55042, a: 64.48197, b: -11.685503 },
             Lab { l: 48.25341, a: 74.3235, b: 62.362576 },
@@ -281,10 +282,13 @@ mod test {
             Lab { l: 40.166237, a: 55.847153, b: -94.75334 },
             Lab { l: 28.53371, a: 58.779716, b: -44.23661 },
         ];
-        let rgbs = simd::labs_to_rgbs(&labs).iter().fold(Vec::with_capacity(labs.len() * 3), |mut acc, rgb| {
-            acc.extend_from_slice(rgb);
-            acc
-        });
+        let rgbs = simd::labs_to_rgbs(&labs).iter().fold(
+            Vec::with_capacity(labs.len() * 3),
+            |mut acc, rgb| {
+                acc.extend_from_slice(rgb);
+                acc
+            },
+        );
         let bytes = simd::labs_to_rgb_bytes(&labs);
         assert_eq!(rgbs, bytes);
     }

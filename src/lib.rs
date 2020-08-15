@@ -120,11 +120,7 @@ fn rgb_to_xyz(r: u8, g: u8, b: u8) -> [f32; 3] {
 }
 
 fn rgb_to_xyz_normalized(rgb: &[f32; 3]) -> [f32; 3] {
-    rgb_to_xyz_inner(
-        rgb[0] * 255.0,
-        rgb[1] * 255.0,
-        rgb[2] * 255.0,
-    )
+    rgb_to_xyz_inner(rgb[0] * 255.0, rgb[1] * 255.0, rgb[2] * 255.0)
 }
 
 #[inline]
@@ -329,8 +325,8 @@ pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
 
 #[doc(hidden)]
 pub mod __scalar {
-    use Lab;
     use rgb_to_lab;
+    use Lab;
 
     #[inline]
     pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
@@ -341,7 +337,7 @@ pub mod __scalar {
     pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
         labs.iter()
             .map(Lab::to_rgb)
-            .fold(Vec::with_capacity(labs.len() * 3),|mut acc, rgb| {
+            .fold(Vec::with_capacity(labs.len() * 3), |mut acc, rgb| {
                 acc.extend_from_slice(&rgb);
                 acc
             })
@@ -354,7 +350,8 @@ pub mod __scalar {
 
     #[inline]
     pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
-        bytes.chunks_exact(3)
+        bytes
+            .chunks_exact(3)
             .map(|rgb| rgb_to_lab(rgb[0], rgb[1], rgb[2]))
             .collect()
     }

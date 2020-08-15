@@ -33,8 +33,8 @@ freely, subject to the following restrictions:
 
 */
 
-use std::mem;
 use std::arch::x86_64::*;
+use std::mem;
 
 static X7F: i32 = 0x7f;
 static SQRTHF: f32 = 0.70710678118654752;
@@ -57,7 +57,7 @@ pub unsafe fn log256_ps(x: __m256) -> __m256 {
     let invalid_mask = _mm256_cmp_ps(x, _mm256_setzero_ps(), _CMP_LE_OS);
 
     let _ps256_min_norm_pos: __m256 = mem::transmute(_mm256_set1_epi32(0x00800000));
-    let mut x = _mm256_max_ps(x, _ps256_min_norm_pos);  /* cut off denormalized stuff */
+    let mut x = _mm256_max_ps(x, _ps256_min_norm_pos); /* cut off denormalized stuff */
 
     let mut imm0 = _mm256_srli_epi32(_mm256_castps_si256(x), 23);
 
@@ -78,7 +78,7 @@ pub unsafe fn log256_ps(x: __m256) -> __m256 {
     e = _mm256_sub_ps(e, _mm256_and_ps(one, mask));
     x = _mm256_add_ps(x, tmp);
 
-    let z = _mm256_mul_ps(x,x);
+    let z = _mm256_mul_ps(x, x);
 
     let mut y = _mm256_set1_ps(LOG_P0);
     y = _mm256_mul_ps(y, x);
@@ -153,7 +153,7 @@ pub unsafe fn exp256_ps(x: __m256) -> __m256 {
     x = _mm256_sub_ps(x, tmp);
     x = _mm256_sub_ps(x, z);
 
-    z = _mm256_mul_ps(x,x);
+    z = _mm256_mul_ps(x, x);
 
     let mut y = _mm256_set1_ps(EXP_P0);
     y = _mm256_mul_ps(y, x);
@@ -188,9 +188,9 @@ pub unsafe fn powf256_ps(x: __m256, y: __m256) -> __m256 {
 
 #[cfg(test)]
 mod test {
-    use super::{log256_ps, exp256_ps, powf256_ps};
-    use std::{f32, mem};
+    use super::{exp256_ps, log256_ps, powf256_ps};
     use std::arch::x86_64::*;
+    use std::{f32, mem};
 
     #[test]
     fn test_log256_ps() {

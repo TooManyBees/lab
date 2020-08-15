@@ -1,5 +1,5 @@
-use crate::{Lab, EPSILON, KAPPA};
 use crate::simd::math::powf256_ps;
+use crate::{Lab, EPSILON, KAPPA};
 use std::arch::x86_64::*;
 use std::{iter, mem};
 
@@ -114,34 +114,34 @@ unsafe fn rgb_bytes_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
 #[inline]
 unsafe fn byte_slice_to_simd(bytes: &[u8]) -> (__m256, __m256, __m256) {
     let r = _mm256_set_ps(
-        bytes[3*0] as f32,
-        bytes[3*1] as f32,
-        bytes[3*2] as f32,
-        bytes[3*3] as f32,
-        bytes[3*4] as f32,
-        bytes[3*5] as f32,
-        bytes[3*6] as f32,
-        bytes[3*7] as f32,
+        bytes[3 * 0] as f32,
+        bytes[3 * 1] as f32,
+        bytes[3 * 2] as f32,
+        bytes[3 * 3] as f32,
+        bytes[3 * 4] as f32,
+        bytes[3 * 5] as f32,
+        bytes[3 * 6] as f32,
+        bytes[3 * 7] as f32,
     );
     let g = _mm256_set_ps(
-        bytes[3*0 + 1] as f32,
-        bytes[3*1 + 1] as f32,
-        bytes[3*2 + 1] as f32,
-        bytes[3*3 + 1] as f32,
-        bytes[3*4 + 1] as f32,
-        bytes[3*5 + 1] as f32,
-        bytes[3*6 + 1] as f32,
-        bytes[3*7 + 1] as f32,
+        bytes[3 * 0 + 1] as f32,
+        bytes[3 * 1 + 1] as f32,
+        bytes[3 * 2 + 1] as f32,
+        bytes[3 * 3 + 1] as f32,
+        bytes[3 * 4 + 1] as f32,
+        bytes[3 * 5 + 1] as f32,
+        bytes[3 * 6 + 1] as f32,
+        bytes[3 * 7 + 1] as f32,
     );
     let b = _mm256_set_ps(
-        bytes[3*0 + 2] as f32,
-        bytes[3*1 + 2] as f32,
-        bytes[3*2 + 2] as f32,
-        bytes[3*3 + 2] as f32,
-        bytes[3*4 + 2] as f32,
-        bytes[3*5 + 2] as f32,
-        bytes[3*6 + 2] as f32,
-        bytes[3*7 + 2] as f32,
+        bytes[3 * 0 + 2] as f32,
+        bytes[3 * 1 + 2] as f32,
+        bytes[3 * 2 + 2] as f32,
+        bytes[3 * 3 + 2] as f32,
+        bytes[3 * 4 + 2] as f32,
+        bytes[3 * 5 + 2] as f32,
+        bytes[3 * 6 + 2] as f32,
+        bytes[3 * 7 + 2] as f32,
     );
     (r, g, b)
 }
@@ -291,7 +291,11 @@ mod test {
 
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
-        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00002);
+        assert_relative_eq!(
+            labs_simd.as_slice(),
+            labs_non_simd.as_slice(),
+            max_relative = 0.00002
+        );
     }
 
     #[test]
@@ -308,6 +312,7 @@ mod test {
             [155, 96, 132],  // Lab { l: 48.260345, a: 29.383003, b: -9.950054 }
             [249, 165, 33],  // Lab { l: 74.29188, a: 21.827251, b: 72.75864 }
         ];
+        #[rustfmt::skip]
         let bytes = vec![
             253, 120, 138, // Lab { l: 66.6348, a: 52.260696, b: 14.850557 }
             25, 20, 22,    // Lab { l: 6.9093895, a: 2.8204322, b: -0.45616925 }
@@ -328,7 +333,11 @@ mod test {
     fn test_simd_rgbs_to_labs_many() {
         let labs_non_simd = rgbs_to_labs(&RGBS);
         let labs_simd = simd::rgbs_to_labs(&RGBS);
-        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00005);
+        assert_relative_eq!(
+            labs_simd.as_slice(),
+            labs_non_simd.as_slice(),
+            max_relative = 0.00005
+        );
     }
 
     #[test]
@@ -336,6 +345,10 @@ mod test {
         let rgbs = vec![[253, 120, 138]];
         let labs_non_simd = rgbs_to_labs(&rgbs);
         let labs_simd = simd::rgbs_to_labs(&rgbs);
-        assert_relative_eq!(labs_simd.as_slice(), labs_non_simd.as_slice(), max_relative = 0.00002);
+        assert_relative_eq!(
+            labs_simd.as_slice(),
+            labs_non_simd.as_slice(),
+            max_relative = 0.00002
+        );
     }
 }
