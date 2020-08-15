@@ -1,0 +1,16 @@
+language: rust
+dist: bionic
+before_script:
+  - rustup component add rustfmt
+script:
+  - cargo build
+  - cargo test
+  - cargo fmt -- --check
+rust:
+  - stable
+  - beta
+  - nightly
+jobs:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
