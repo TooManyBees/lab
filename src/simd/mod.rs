@@ -9,5 +9,8 @@ mod labs_to_rgbs;
 mod math;
 mod rgbs_to_labs;
 
-pub use self::labs_to_rgbs::{labs_to_rgb_bytes, labs_to_rgbs, labs_to_rgbs_chunk};
-pub use self::rgbs_to_labs::{rgb_bytes_to_labs, rgbs_to_labs, rgbs_to_labs_chunk};
+pub use self::labs_to_rgbs::{labs_to_rgb_bytes, labs_to_rgbs};
+pub use self::rgbs_to_labs::{
+    abgr_bytes_to_labs, argb_bytes_to_labs, bgr_bytes_to_labs, bgra_bytes_to_labs,
+    rgb_bytes_to_labs, rgba_bytes_to_labs, rgbs_to_labs,
+};

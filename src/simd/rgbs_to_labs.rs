@@ -33,51 +33,20 @@ pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
     vs
 }
 
-pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
-    let chunks = bytes.chunks_exact(8 * 3);
-    let remainder = chunks.remainder();
-    let mut vs = chunks.fold(Vec::with_capacity(bytes.len() / 3), |mut v, bytes| {
-        let labs = unsafe { slice_bytes_to_slice_labs(bytes) };
-        v.extend_from_slice(&labs);
-        v
-    });
-
-    if remainder.len() > 0 {
-        let bytes: Vec<u8> = remainder
-            .iter()
-            .cloned()
-            .chain(iter::repeat(0u8))
-            .take(8 * 3)
-            .collect();
-        let labs = unsafe { slice_bytes_to_slice_labs(&bytes) };
-        vs.extend_from_slice(&labs[..remainder.len() / 3]);
-    }
-
-    vs
-}
-
-#[allow(dead_code)]
-pub fn rgbs_to_labs_chunk(rgbs: &[[u8; 3]]) -> [Lab; 8] {
-    unsafe { slice_rgbs_to_slice_labs(rgbs) }
-}
+// #[allow(dead_code)]
+// pub fn rgbs_to_labs_chunk(rgbs: &[[u8; 3]]) -> [Lab; 8] {
+//     unsafe { slice_rgbs_to_slice_labs(rgbs) }
+// }
 
 unsafe fn slice_rgbs_to_slice_labs(rgbs: &[[u8; 3]]) -> [Lab; 8] {
-    let (r, g, b) = rgb_bytes_to_simd(rgbs);
+    let (r, g, b) = rgb_triples_to_simd(rgbs);
     let (x, y, z) = rgbs_to_xyzs(r, g, b);
     let (l, a, b) = xyzs_to_labs(x, y, z);
     simd_to_lab_array(l, a, b)
 }
 
 #[inline]
-unsafe fn slice_bytes_to_slice_labs(bytes: &[u8]) -> [Lab; 8] {
-    let (r, g, b) = byte_slice_to_simd(bytes);
-    let (x, y, z) = rgbs_to_xyzs(r, g, b);
-    let (l, a, b) = xyzs_to_labs(x, y, z);
-    simd_to_lab_array(l, a, b)
-}
-
-#[inline]
-unsafe fn rgb_bytes_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
+unsafe fn rgb_triples_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
     let r = _mm256_set_ps(
         rgbs[0][0] as f32,
         rgbs[1][0] as f32,
@@ -111,40 +80,77 @@ unsafe fn rgb_bytes_to_simd(rgbs: &[[u8; 3]]) -> (__m256, __m256, __m256) {
     (r, g, b)
 }
 
-#[inline]
-unsafe fn byte_slice_to_simd(bytes: &[u8]) -> (__m256, __m256, __m256) {
-    let r = _mm256_set_ps(
-        bytes[3 * 0] as f32,
-        bytes[3 * 1] as f32,
-        bytes[3 * 2] as f32,
-        bytes[3 * 3] as f32,
-        bytes[3 * 4] as f32,
-        bytes[3 * 5] as f32,
-        bytes[3 * 6] as f32,
-        bytes[3 * 7] as f32,
-    );
-    let g = _mm256_set_ps(
-        bytes[3 * 0 + 1] as f32,
-        bytes[3 * 1 + 1] as f32,
-        bytes[3 * 2 + 1] as f32,
-        bytes[3 * 3 + 1] as f32,
-        bytes[3 * 4 + 1] as f32,
-        bytes[3 * 5 + 1] as f32,
-        bytes[3 * 6 + 1] as f32,
-        bytes[3 * 7 + 1] as f32,
-    );
-    let b = _mm256_set_ps(
-        bytes[3 * 0 + 2] as f32,
-        bytes[3 * 1 + 2] as f32,
-        bytes[3 * 2 + 2] as f32,
-        bytes[3 * 3 + 2] as f32,
-        bytes[3 * 4 + 2] as f32,
-        bytes[3 * 5 + 2] as f32,
-        bytes[3 * 6 + 2] as f32,
-        bytes[3 * 7 + 2] as f32,
-    );
-    (r, g, b)
+macro_rules! bytes_to_labs {
+    ($name:ident, $size:literal, $r_pos:literal, $g_pos:literal, $b_pos:literal) => {
+        pub fn $name(bytes: &[u8]) -> Vec<Lab> {
+            #[inline]
+            unsafe fn slice_bytes_to_slice_labs(bytes: &[u8]) -> [Lab; 8] {
+                debug_assert!(bytes.len() == 8 * $size);
+                let r = _mm256_set_ps(
+                    bytes[$size * 0 + $r_pos] as f32,
+                    bytes[$size * 1 + $r_pos] as f32,
+                    bytes[$size * 2 + $r_pos] as f32,
+                    bytes[$size * 3 + $r_pos] as f32,
+                    bytes[$size * 4 + $r_pos] as f32,
+                    bytes[$size * 5 + $r_pos] as f32,
+                    bytes[$size * 6 + $r_pos] as f32,
+                    bytes[$size * 7 + $r_pos] as f32,
+                );
+                let g = _mm256_set_ps(
+                    bytes[$size * 0 + $g_pos] as f32,
+                    bytes[$size * 1 + $g_pos] as f32,
+                    bytes[$size * 2 + $g_pos] as f32,
+                    bytes[$size * 3 + $g_pos] as f32,
+                    bytes[$size * 4 + $g_pos] as f32,
+                    bytes[$size * 5 + $g_pos] as f32,
+                    bytes[$size * 6 + $g_pos] as f32,
+                    bytes[$size * 7 + $g_pos] as f32,
+                );
+                let b = _mm256_set_ps(
+                    bytes[$size * 0 + $b_pos] as f32,
+                    bytes[$size * 1 + $b_pos] as f32,
+                    bytes[$size * 2 + $b_pos] as f32,
+                    bytes[$size * 3 + $b_pos] as f32,
+                    bytes[$size * 4 + $b_pos] as f32,
+                    bytes[$size * 5 + $b_pos] as f32,
+                    bytes[$size * 6 + $b_pos] as f32,
+                    bytes[$size * 7 + $b_pos] as f32,
+                );
+                let (x, y, z) = rgbs_to_xyzs(r, g, b);
+                let (l, a, b) = xyzs_to_labs(x, y, z);
+                simd_to_lab_array(l, a, b)
+            }
+
+            let chunks = bytes.chunks_exact(8 * $size);
+            let remainder = chunks.remainder();
+            let mut vs = chunks.fold(Vec::with_capacity(bytes.len() / $size), |mut v, bytes| {
+                let labs = unsafe { slice_bytes_to_slice_labs(bytes) };
+                v.extend_from_slice(&labs);
+                v
+            });
+
+            if remainder.len() > 0 {
+                let bytes: Vec<u8> = remainder
+                    .iter()
+                    .cloned()
+                    .chain(iter::repeat(0u8))
+                    .take(8 * $size)
+                    .collect();
+                let labs = unsafe { slice_bytes_to_slice_labs(&bytes) };
+                vs.extend_from_slice(&labs[..remainder.len() / $size]);
+            }
+
+            vs
+        }
+    };
 }
+
+bytes_to_labs!(rgb_bytes_to_labs, 3, 0, 1, 2);
+bytes_to_labs!(rgba_bytes_to_labs, 4, 0, 1, 2);
+bytes_to_labs!(argb_bytes_to_labs, 4, 1, 2, 3);
+bytes_to_labs!(bgr_bytes_to_labs, 3, 2, 1, 0);
+bytes_to_labs!(bgra_bytes_to_labs, 4, 2, 1, 0);
+bytes_to_labs!(abgr_bytes_to_labs, 4, 3, 2, 1);
 
 unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
     let r = rgbs_to_xyzs_map(r);

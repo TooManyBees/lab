@@ -222,104 +222,173 @@ fn xyz_to_rgb_normalized(xyz: [f32; 3]) -> [f32; 3] {
     [xyz_to_rgb_map(r), xyz_to_rgb_map(g), xyz_to_rgb_map(b)]
 }
 
-/// Convenience function to map a slice of RGB values to Lab values in serial
-///
-/// # Example
-/// ```
-/// # extern crate lab;
-/// # use lab::{Lab, rgbs_to_labs};
-/// let rgbs = &[[255u8, 0, 0], [255, 0, 255], [0, 255, 255]];
-/// let labs = lab::rgbs_to_labs(rgbs);
-/// assert_eq!(labs, vec![
-///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
-///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
-///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 }
-/// ]);
-/// ```
-#[inline]
-pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab> {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let labs = simd::rgbs_to_labs(rgbs);
+macro_rules! vary_on_simd {
+    ($(
+        $(#[$outer:meta])*
+        pub fn $name:ident($arg:ident: $arg_ty:ty) -> $ret:ty;
+    )+) => {
+        $(
+            $(#[$outer])*
+            pub fn $name($arg: $arg_ty) -> $ret {
+                #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+                let ret = simd::$name($arg);
 
-    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let labs = __scalar::rgbs_to_labs(rgbs);
+                #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
+                let ret = __scalar::$name($arg);
 
-    labs
+                ret
+            }
+        )+
+    };
 }
 
-/// RGB to Lab conversion that operates on a flat `&[u8]` of consecutive RGB triples.
-///
-/// # Example
-/// ```
-/// # extern crate lab;
-/// # use lab::{Lab, rgb_bytes_to_labs};
-/// let rgbs = &[255u8, 0, 0, 255, 0, 255, 0, 255, 255];
-/// let labs = lab::rgb_bytes_to_labs(rgbs);
-/// assert_eq!(labs, vec![
-///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
-///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
-///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 }
-/// ]);
-/// ```
-pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let labs = simd::rgb_bytes_to_labs(bytes);
+vary_on_simd!(
+    /// Convenience function to map a slice of RGB values to Lab values in serial
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, rgbs_to_labs};
+    /// let rgbs = &[[255, 0, 0], [255, 0, 255], [0, 255, 255]];
+    /// let labs = lab::rgbs_to_labs(rgbs);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn rgbs_to_labs(rgbs: &[[u8; 3]]) -> Vec<Lab>;
 
-    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let labs = __scalar::rgb_bytes_to_labs(bytes);
+    /// RGB to Lab conversion that operates on a flat `&[u8]` of consecutive RGB triples.
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, rgb_bytes_to_labs};
+    /// let rgb_bytes = &[255, 0, 0, 255, 0, 255, 0, 255, 255];
+    /// let labs = lab::rgb_bytes_to_labs(rgb_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn rgb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-    labs
-}
+    /// RGBA to Lab conversion that operates on a flat `&[u8]` of consecutive RGBA quads.
+    ///
+    /// The alpha component is discarded.
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, rgb_bytes_to_labs};
+    /// let rgba_bytes = &[255, 0, 0, 255, 255, 0, 255, 255, 0, 255, 255, 255];
+    /// let labs = lab::rgba_bytes_to_labs(rgba_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn rgba_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-/// Convenience function to map a slice of Lab values to RGB values in serial
-///
-/// # Example
-/// ```
-/// # extern crate lab;
-/// # use lab::{Lab, labs_to_rgbs};
-/// let labs = &[
-///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
-///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
-///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
-/// ];
-/// let rgbs = lab::labs_to_rgbs(labs);
-/// assert_eq!(rgbs, vec![[0u8, 255, 255], [255, 0, 255], [255, 255, 0]]);
-/// ```
-#[inline]
-pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]> {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let rgbs = simd::labs_to_rgbs(labs);
+    /// ARGB to Lab conversion that operates on a flat `&[u8]` of consecutive ARGB quads.
+    ///
+    /// The alpha component is discarded.
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, rgb_bytes_to_labs};
+    /// let argb_bytes = &[255, 255, 0, 0, 255, 255, 0, 255, 255, 0, 255, 255];
+    /// let labs = lab::argb_bytes_to_labs(argb_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn argb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let rgbs = __scalar::labs_to_rgbs(labs);
+    /// BGR to Lab conversion that operates on a flat `&[u8]` of consecutive BGR triples.
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, bgr_bytes_to_labs};
+    /// let bgr_bytes = &[0, 0, 255, 255, 0, 255, 255, 255, 0];
+    /// let labs = lab::bgr_bytes_to_labs(bgr_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn bgr_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-    rgbs
-}
+    /// BGRA to Lab conversion that operates on a flat `&[u8]` of consecutive BGRA quads.
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, bgr_bytes_to_labs};
+    /// let bgra_bytes = &[0, 0, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255];
+    /// let labs = lab::bgra_bytes_to_labs(bgra_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn bgra_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-/// Lab to RGB conversion that returns RGB triples flattened into a `Vec<u8>`
-///
-/// # Example
-/// ```
-/// # extern crate lab;
-/// # use lab::{Lab, labs_to_rgb_bytes};
-/// let labs = &[
-///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
-///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
-///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
-/// ];
-/// let rgb_bytes = lab::labs_to_rgb_bytes(labs);
-/// assert_eq!(rgb_bytes, vec![0, 255, 255, 255, 0, 255, 255, 255, 0]);
-/// ```
-#[inline]
-pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8> {
-    #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
-    let bytes = simd::labs_to_rgb_bytes(labs);
+    /// ABGR to Lab conversion that operates on a flat `&[u8]` of consecutive ABGR quads.
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, bgr_bytes_to_labs};
+    /// let abgr_bytes = &[255, 0, 0, 255, 255, 255, 0, 255, 255, 255, 255, 0];
+    /// let labs = lab::abgr_bytes_to_labs(abgr_bytes);
+    /// assert_eq!(labs, vec![
+    ///     Lab { l: 53.240784, a: 80.09252, b: 67.203186 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    /// ]);
+    /// ```
+    pub fn abgr_bytes_to_labs(bytes: &[u8]) -> Vec<Lab>;
 
-    #[cfg(not(all(target_arch = "x86_64", target_feature = "avx2")))]
-    let bytes = __scalar::labs_to_rgb_bytes(labs);
+    /// Convenience function to map a slice of Lab values to RGB values in serial
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, labs_to_rgbs};
+    /// let labs = &[
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
+    /// ];
+    /// let rgbs = lab::labs_to_rgbs(labs);
+    /// assert_eq!(rgbs, vec![[0u8, 255, 255], [255, 0, 255], [255, 255, 0]]);
+    /// ```
+    pub fn labs_to_rgbs(labs: &[Lab]) -> Vec<[u8; 3]>;
 
-    bytes
-}
+    /// Lab to RGB conversion that returns RGB triples flattened into a `Vec<u8>`
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate lab;
+    /// # use lab::{Lab, labs_to_rgb_bytes};
+    /// let labs = &[
+    ///     Lab { l: 91.11321, a: -48.08751, b: -14.131201 },
+    ///     Lab { l: 60.32421, a: 98.23433, b: -60.824894 },
+    ///     Lab { l: 97.13926, a: -21.553724, b: 94.47797 },
+    /// ];
+    /// let rgb_bytes = lab::labs_to_rgb_bytes(labs);
+    /// assert_eq!(rgb_bytes, vec![0, 255, 255, 255, 0, 255, 255, 255, 0]);
+    /// ```
+    pub fn labs_to_rgb_bytes(labs: &[Lab]) -> Vec<u8>;
+);
 
 #[doc(hidden)]
 pub mod __scalar {
@@ -351,6 +420,51 @@ pub mod __scalar {
         bytes
             .chunks_exact(3)
             .map(|rgb| rgb_to_lab(rgb[0], rgb[1], rgb[2]))
+            .collect()
+    }
+
+    #[inline]
+    pub fn rgbas_to_labs(rgbas: &[[u8; 4]]) -> Vec<Lab> {
+        rgbas.iter().map(Lab::from_rgba).collect()
+    }
+
+    #[inline]
+    pub fn rgba_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes
+            .chunks_exact(4)
+            .map(|rgba| rgb_to_lab(rgba[0], rgba[1], rgba[2]))
+            .collect()
+    }
+
+    #[inline]
+    pub fn argb_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes
+            .chunks_exact(4)
+            .map(|argb| rgb_to_lab(argb[1], argb[2], argb[3]))
+            .collect()
+    }
+
+    #[inline]
+    pub fn bgr_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes
+            .chunks_exact(3)
+            .map(|bgr| rgb_to_lab(bgr[2], bgr[1], bgr[0]))
+            .collect()
+    }
+
+    #[inline]
+    pub fn bgra_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes
+            .chunks_exact(4)
+            .map(|bgra| rgb_to_lab(bgra[2], bgra[1], bgra[0]))
+            .collect()
+    }
+
+    #[inline]
+    pub fn abgr_bytes_to_labs(bytes: &[u8]) -> Vec<Lab> {
+        bytes
+            .chunks_exact(4)
+            .map(|abgr| rgb_to_lab(abgr[3], abgr[2], abgr[1]))
             .collect()
     }
 }
