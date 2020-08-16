@@ -263,7 +263,9 @@ unsafe fn simd_to_lab_array(l: __m256, a: __m256, b: __m256) -> [Lab; 8] {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::{rgbs_to_labs, simd};
+    use crate::{rgbs_to_labs, simd};
+    use approx::assert_relative_eq;
+    use lazy_static::lazy_static;
     use rand;
     use rand::distributions::Standard;
     use rand::Rng;

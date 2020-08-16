@@ -247,7 +247,8 @@ unsafe fn simd_to_rgb_bytes(r: __m256, g: __m256, b: __m256) -> [u8; 8 * 3] {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::{labs_to_rgbs, simd, Lab};
+    use crate::{labs_to_rgbs, simd, Lab};
+    use lazy_static::lazy_static;
     use rand;
     use rand::distributions::Standard;
     use rand::Rng;

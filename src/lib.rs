@@ -85,10 +85,8 @@ Lab 0.7.0 requires Rust >= 1.31.0 for the [chunks_exact](https://doc.rust-lang.o
 #[macro_use]
 extern crate pretty_assertions;
 #[cfg(test)]
-#[cfg_attr(all(target_arch = "x86_64", target_feature = "avx2"), macro_use)]
 extern crate approx;
 #[cfg(test)]
-#[cfg_attr(all(target_arch = "x86_64", target_feature = "avx2"), macro_use)]
 extern crate lazy_static;
 #[cfg(test)]
 extern crate rand;

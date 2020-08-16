@@ -189,6 +189,7 @@ pub unsafe fn powf256_ps(x: __m256, y: __m256) -> __m256 {
 #[cfg(test)]
 mod test {
     use super::{exp256_ps, log256_ps, powf256_ps};
+    use approx::assert_relative_eq;
     use std::arch::x86_64::*;
     use std::{f32, mem};
 
