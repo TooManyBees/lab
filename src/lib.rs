@@ -114,23 +114,23 @@ fn rgb_to_lab(r: u8, g: u8, b: u8) -> Lab {
 }
 
 fn rgb_to_xyz(r: u8, g: u8, b: u8) -> [f32; 3] {
-    rgb_to_xyz_inner(r as f32, g as f32, b as f32)
+    rgb_to_xyz_inner(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
 }
 
 fn rgb_to_xyz_normalized(rgb: &[f32; 3]) -> [f32; 3] {
-    rgb_to_xyz_inner(rgb[0] * 255.0, rgb[1] * 255.0, rgb[2] * 255.0)
+    rgb_to_xyz_inner(rgb[0], rgb[1], rgb[2])
 }
 
 #[inline]
 fn rgb_to_xyz_inner(r: f32, g: f32, b: f32) -> [f32; 3] {
     #[inline]
     fn rgb_to_xyz_map(c: f32) -> f32 {
-        if c > 10.0 {
-            const A: f32 = 0.055 * 255.0;
-            const D: f32 = 1.055 * 255.0;
+        if c > (10.0 / 255.0) {
+            const A: f32 = 0.055;
+            const D: f32 = 1.055;
             ((c + A) / D).powf(2.4)
         } else {
-            const D: f32 = 12.92 * 255.0;
+            const D: f32 = 12.92;
             c / D
         }
     }
@@ -362,7 +362,7 @@ impl Lab {
     ///
     /// ```
     /// let lab = lab::Lab::from_rgb(&[240, 33, 95]);
-    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
+    /// assert_eq!(lab::Lab { l: 52.33687, a: 75.5516, b: 19.99889 }, lab);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
         rgb_to_lab(rgb[0], rgb[1], rgb[2])
@@ -383,7 +383,7 @@ impl Lab {
     ///
     /// ```
     /// let lab = lab::Lab::from_rgba(&[240, 33, 95, 255]);
-    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
+    /// assert_eq!(lab::Lab { l: 52.33687, a: 75.5516, b: 19.99889 }, lab);
     /// ```
     pub fn from_rgba(rgba: &[u8; 4]) -> Self {
         Lab::from_rgb(&[rgba[0], rgba[1], rgba[2]])
@@ -438,7 +438,7 @@ mod tests {
     const PINK: Lab = Lab {
         l: 66.639084,
         a: 52.251457,
-        b: 14.860654,
+        b: 14.8606415,
     };
 
     #[rustfmt::skip]
@@ -458,9 +458,9 @@ mod tests {
         ([255, 255,   0], Lab { l: 97.13926, a: -21.553724, b: 94.47797 }),
 
         ([  0,   0,   0], Lab { l: 0.0, a: 0.0, b: 0.0 }),
-        ([ 64,  64,  64], Lab { l: 27.09341, a: 0.0, b: 0.0 }),
+        ([ 70,  70,  70], Lab { l: 29.724686, a: 0.0, b: 0.0 }),
         ([127, 127, 127], Lab { l: 53.192772, a: 0.0, b: 0.0 }),
-        ([196, 196, 196], Lab { l: 79.15698, a: 0.0, b: 0.0 }),
+        ([196, 196, 196], Lab { l: 79.15699, a: 0.0, b: 0.0 }),
         ([255, 255, 255], Lab { l: 100.0, a: 0.0, b: 0.0 }),
     ];
 
@@ -485,7 +485,7 @@ mod tests {
             a: 62.519463,
             b: 2.8871894,
         };
-        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.68846);
+        assert_eq!(PINK.squared_distance(&ugly_websafe_pink), 254.68814);
     }
 
     #[test]

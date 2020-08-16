@@ -147,9 +147,9 @@ unsafe fn byte_slice_to_simd(bytes: &[u8]) -> (__m256, __m256, __m256) {
 }
 
 unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m256) {
-    let r = rgbs_to_xyzs_map(r);
-    let g = rgbs_to_xyzs_map(g);
-    let b = rgbs_to_xyzs_map(b);
+    let r = rgbs_to_xyzs_map(_mm256_mul_ps(r, _mm256_set1_ps(1.0 / 255.0)));
+    let g = rgbs_to_xyzs_map(_mm256_mul_ps(g, _mm256_set1_ps(1.0 / 255.0)));
+    let b = rgbs_to_xyzs_map(_mm256_mul_ps(b, _mm256_set1_ps(1.0 / 255.0)));
 
     let x = {
         let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.4124564390896921));
@@ -177,16 +177,16 @@ unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m2
 
 #[inline]
 unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
-    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(10.0), _CMP_GT_OQ);
+    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.04045), _CMP_GT_OQ);
     let true_branch = {
-        const A: f32 = 0.055 * 255.0;
-        const D: f32 = 1.055 * 255.0;
+        const A: f32 = 0.055;
+        const D: f32 = 1.055;
         let t0 = _mm256_div_ps(_mm256_add_ps(c, _mm256_set1_ps(A)), _mm256_set1_ps(D));
         powf256_ps(t0, _mm256_set1_ps(2.4))
     };
 
     let false_branch = {
-        const D: f32 = 12.92 * 255.0;
+        const D: f32 = 12.92;
         _mm256_div_ps(c, _mm256_set1_ps(D))
     };
     _mm256_blendv_ps(false_branch, true_branch, mask)
