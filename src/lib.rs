@@ -94,12 +94,20 @@ extern crate rand;
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 mod simd;
 
-/// Struct representing a color in L\*a\*b\* space
+/// Struct representing a color in CIALab, a.k.a. L\*a\*b\*, color space
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Lab {
     pub l: f32,
     pub a: f32,
     pub b: f32,
+}
+
+/// Struct representing a color in cylindrical CIELCh color space
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
+pub struct LCh {
+    pub l: f32,
+    pub c: f32,
+    pub h: f32,
 }
 
 // κ and ε parameters used in conversion between XYZ and La*b*.  See
@@ -490,9 +498,106 @@ impl Lab {
     }
 }
 
+impl LCh {
+    /// Constructs a new `LCh` from a three-element array of `u8`s
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lch = lab::LCh::from_rgb(&[240, 33, 95]);
+    /// assert_eq!(lab::LCh { l: 52.334686, c: 78.15284, h: 0.25873056 }, lch);
+    /// ```
+    pub fn from_rgb(rgb: &[u8; 3]) -> Self {
+        LCh::from_lab(Lab::from_rgb(&rgb))
+    }
+
+    /// Constructs a new `LCh` from a four-element array of `u8`s
+    ///
+    /// The `LCh` struct does not store alpha channel information, so the last
+    /// `u8` representing alpha is discarded. This convenience method exists
+    /// in order to easily measure colors already stored in an RGBA array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lch = lab::LCh::from_rgba(&[240, 33, 95, 255]);
+    /// assert_eq!(lab::LCh { l: 52.334686, c: 78.15284, h: 0.25873056 }, lch);
+    /// ```
+    pub fn from_rgba(rgba: &[u8; 4]) -> Self {
+        LCh::from_lab(Lab::from_rgba(&rgba))
+    }
+
+    /// Constructs a new `LCh` from a `Lab`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lab = lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 };
+    /// let lch = lab::LCh::from_lab(lab);
+    /// assert_eq!(lab::LCh { l: 52.33686, c: 78.15369, h: 0.25877 }, lch);
+    ///
+    /// let lab = lab::Lab { l: 52.33686, a: 0.0, b: 0.0 };
+    /// let lch = lab::LCh::from_lab(lab);
+    /// assert_eq!(lab::LCh { l: 52.33686, c: 0.0, h: 0.0 }, lch);
+    /// ```
+    pub fn from_lab(lab: Lab) -> Self {
+        LCh {
+            l: lab.l,
+            c: lab.a.hypot(lab.b),
+            h: lab.b.atan2(lab.a),
+        }
+    }
+
+    /// Returns the `LCh`'s color in RGB, in a 3-element array
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut lch = lab::LCh { l: 52.33686, c: 78.15369, h: 0.25877 };
+    /// assert_eq!([240, 33, 95], lch.to_rgb());
+    ///
+    /// lch.h += std::f32::consts::TAU;
+    /// assert_eq!([240, 33, 95], lch.to_rgb());
+    /// ```
+    pub fn to_rgb(&self) -> [u8; 3] {
+        self.to_lab().to_rgb()
+    }
+
+    /// Returns the `LCh`'s color in `Lab`
+    ///
+    /// Note that due to imprecision of floating point arithmetic, conversions
+    /// between Lab and LCh are not stable.  A chain of Lab→LCh→Lab or
+    /// LCh→Lab→LCh operations isn’t guaranteed to give back the source colour.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let lch = lab::LCh { l: 52.33686, c: 78.15369, h: 0.25877 };
+    /// let lab = lch.to_lab();
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 75.5516, b: 19.998878 }, lab);
+    ///
+    /// let lch = lab::LCh { l: 52.33686, c: 0.0, h: 0.25877 };
+    /// let lab = lch.to_lab();
+    /// assert_eq!(lab::Lab { l: 52.33686, a: 0.0, b: 0.0 }, lab);
+    ///
+    /// let inp = lab::Lab { l: 29.52658, a: 58.595745, b: -36.281406 };
+    /// let lch = lab::LCh { l: 29.52658, c: 68.91881,  h: -0.5544043 };
+    /// let out = lab::Lab { l: 29.52658, a: 58.59575,  b: -36.281406 };
+    /// assert_eq!(lch, lab::LCh::from_lab(inp));
+    /// assert_eq!(out, lch.to_lab());
+    /// ```
+    pub fn to_lab(&self) -> Lab {
+        Lab {
+            l: self.l,
+            a: self.c * self.h.cos(),
+            b: self.c * self.h.sin(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{labs_to_rgbs, rgbs_to_labs, Lab};
+    use super::{labs_to_rgbs, rgbs_to_labs, LCh, Lab};
     use rand;
     use rand::distributions::Standard;
     use rand::Rng;
@@ -504,39 +609,124 @@ mod tests {
     };
 
     #[rustfmt::skip]
-    static COLOURS: [([u8; 3], Lab); 17] = [
-        ([253, 120, 138], PINK),
+    static COLOURS: [([u8; 3], Lab, LCh); 17] = [
+        ([253, 120, 138],
+         PINK,
+         LCh { l: 66.637695, c: 54.321777, h: 0.2770602 }),
 
-        ([127,   0,   0], Lab { l: 25.299877, a: 47.77421, b: 37.752514, }),
-        ([  0, 127,   0], Lab { l: 45.87715, a: -51.405922, b: 49.61748, }),
-        ([  0,   0, 127], Lab { l: 12.809523, a: 47.237186, b: -64.33636, }),
-        ([  0, 127, 127], Lab { l: 47.892532, a: -28.680845, b: -8.428156, }),
-        ([127,   0, 127], Lab { l: 29.525677, a: 58.597298, b: -36.28323, }),
-        ([255,   0,   0], Lab { l: 53.238235, a: 80.09231, b: 67.202095, }),
-        ([  0, 255,   0], Lab { l: 87.73554, a: -86.18078, b: 83.18251, }),
-        ([  0,   0, 255], Lab { l: 32.298466, a: 79.192, b: -107.858345, }),
-        ([  0, 255, 255], Lab { l: 91.11428, a: -48.08274, b: -14.12958, }),
-        ([255,   0, 255], Lab { l: 60.322693, a: 98.23698, b: -60.827957, }),
-        ([255, 255,   0], Lab { l: 97.139, a: -21.556675, b: 94.48001, }),
+        ([127,   0,   0],
+         Lab { l: 25.299877, a: 47.77421, b: 37.752514 },
+         LCh { l: 25.299877, c: 60.890293, h: 0.66875386 }),
+        ([  0, 127,   0],
+         Lab { l: 45.87715, a: -51.405922, b: 49.61748 },
+         LCh { l: 45.87715, c: 71.445526, h: 2.373896 }),
+        ([  0,   0, 127],
+         Lab { l: 12.809523, a: 47.237186, b: -64.33636 },
+         LCh { l: 12.809523, c: 79.81553, h: -0.93746966 }),
+        ([  0, 127, 127],
+         Lab { l: 47.892532, a: -28.680845, b: -8.428156 },
+         LCh { l: 47.892532, c: 29.893557, h: -2.8557782 }),
+        ([127,   0, 127],
+         Lab { l: 29.525677, a: 58.597298, b: -36.28323 },
+         LCh { l: 29.525677, c: 68.92109, h: -0.554415 }),
+        ([255,   0,   0],
+         Lab { l: 53.238235, a: 80.09231, b: 67.202095 },
+         LCh { l: 53.238235, c: 104.55094, h: 0.6981073 }),
+        ([  0, 255,   0],
+         Lab { l: 87.73554, a: -86.18078, b: 83.18251 },
+         LCh { l: 87.73554, c: 119.776695, h: 2.373896 }),
+        ([  0,   0, 255],
+         Lab { l: 32.298466, a: 79.192, b: -107.858345 },
+         LCh { l: 32.298466, c: 133.8088, h: -0.93746966 }),
+        ([  0, 255, 255],
+         Lab { l: 91.11428, a: -48.08274, b: -14.12958 },
+         LCh { l: 91.11428, c: 50.115814, h: -2.8557787 }),
+        ([255,   0, 255],
+         Lab { l: 60.322693, a: 98.23698, b: -60.827957 },
+         LCh { l: 60.322693, c: 115.544556, h: -0.55441487 }),
+        ([255, 255,   0],
+         Lab { l: 97.139, a: -21.556675, b: 94.48001 },
+         LCh { l: 97.139, c: 96.90801, h: 1.7951176 }),
 
-        ([  0,   0,   0], Lab { l: 0.0, a: 0.0, b: 0.0 }),
-        ([ 64,  64,  64], Lab { l: 27.09341, a: 0.0, b: 0.0 }),
-        ([127, 127, 127], Lab { l: 53.192772, a: 0.0, b: 0.0 }),
-        ([196, 196, 196], Lab { l: 79.15698, a: 0.0, b: 0.0 }),
-        ([255, 255, 255], Lab { l: 100.0, a: 0.0, b: 0.0 }),
+        ([  0,   0,   0],
+         Lab { l: 0.0, a: 0.0, b: 0.0 },
+         LCh { l: 0.0, c: 0.0, h: 0.0 }),
+        ([ 64,  64,  64],
+         Lab { l: 27.09341, a: 0.0, b: 0.0 },
+         LCh { l: 27.09341, c: 0.0, h: 0.0 }),
+        ([127, 127, 127],
+         Lab { l: 53.192772, a: 0.0, b: 0.0 },
+         LCh { l: 53.192772, c: 0.0, h: 0.0 }),
+        ([196, 196, 196],
+         Lab { l: 79.15698, a: 0.0, b: 0.0 },
+         LCh { l: 79.15698, c: 0.0, h: 0.0 }),
+        ([255, 255, 255],
+         Lab { l: 100.0, a: 0.0, b: 0.0 },
+         LCh { l: 100.0, c: 0.0, h: 0.0 }),
     ];
 
     #[test]
-    fn test_from_rgb() {
-        let expected: Vec<_> = COLOURS.iter().map(|(_, lab)| *lab).collect();
-        let actual: Vec<_> = COLOURS.iter().map(|(rgb, _)| Lab::from_rgb(rgb)).collect();
+    fn test_lab_from_rgb() {
+        let expected: Vec<_> = COLOURS.iter().map(|(_, lab, _)| *lab).collect();
+        let actual: Vec<_> = COLOURS
+            .iter()
+            .map(|(rgb, _, _)| Lab::from_rgb(rgb))
+            .collect();
         assert_eq!(expected, actual);
     }
 
     #[test]
-    fn test_to_rgb() {
-        let expected: Vec<_> = COLOURS.iter().map(|(rgb, _)| *rgb).collect();
-        let actual: Vec<_> = COLOURS.iter().map(|(_, lab)| lab.to_rgb()).collect();
+    fn test_lab_to_rgb() {
+        let expected: Vec<_> = COLOURS.iter().map(|(rgb, _, _)| *rgb).collect();
+        let actual: Vec<_> = COLOURS.iter().map(|(_, lab, _)| lab.to_rgb()).collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_lch_from_rgb() {
+        let expected: Vec<_> = COLOURS.iter().map(|(_, _, lch)| *lch).collect();
+        let actual: Vec<_> = COLOURS
+            .iter()
+            .map(|(rgb, _, _)| LCh::from_rgb(rgb))
+            .collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_lch_to_rgb() {
+        let expected: Vec<_> = COLOURS.iter().map(|(rgb, _, _)| *rgb).collect();
+        let actual: Vec<_> = COLOURS.iter().map(|(_, _, lch)| lch.to_rgb()).collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_lch_from_lab() {
+        let expected: Vec<_> = COLOURS.iter().map(|(_, _, lch)| *lch).collect();
+        let actual: Vec<_> = COLOURS
+            .iter()
+            .map(|(_, lab, _)| LCh::from_lab(*lab))
+            .collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_lch_to_lab() {
+        let mut expected: Vec<_> = COLOURS.iter().map(|(_, lab, _)| *lab).collect();
+        let mut actual: Vec<_> = COLOURS.iter().map(|(_, _, lch)| lch.to_lab()).collect();
+
+        // Floating point arithmetic is hard.  Due to accumulation of errors (or
+        // perhaps imprecision of trig functions) the Lab→LCh→Lab conversion
+        // produces slightly different colour than what the source.  Round a*
+        // and b* to four decimal places to work around this.
+        fn round(vec: &mut Vec<Lab>) {
+            for lab in vec.iter_mut() {
+                lab.a = (lab.a * 100000.0).round() / 100000.0;
+                lab.b = (lab.b * 100000.0).round() / 100000.0;
+            }
+        }
+        round(&mut expected);
+        round(&mut actual);
+
         assert_eq!(expected, actual);
     }
 
