@@ -152,23 +152,23 @@ unsafe fn rgbs_to_xyzs(r: __m256, g: __m256, b: __m256) -> (__m256, __m256, __m2
     let b = rgbs_to_xyzs_map(b);
 
     let x = {
-        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.4124564390896921));
-        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.357576077643909));
-        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.18043748326639894));
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.4124108464885388));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.3575845678529519));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.18045380393360833));
         _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
     let y = {
-        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.21267285140562248));
-        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.715152155287818));
-        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.07217499330655958));
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.21264934272065283));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.7151691357059038));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.07218152157344333));
         _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
     let z = {
-        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.019333895582329317));
-        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.119192025881303));
-        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.9503040785363677));
+        let prod_r = _mm256_mul_ps(r, _mm256_set1_ps(0.019331758429150258));
+        let prod_g = _mm256_mul_ps(g, _mm256_set1_ps(0.11919485595098397));
+        let prod_b = _mm256_mul_ps(b, _mm256_set1_ps(0.9503900340503373));
         _mm256_add_ps(_mm256_add_ps(prod_r, prod_g), prod_b)
     };
 
@@ -193,9 +193,9 @@ unsafe fn rgbs_to_xyzs_map(c: __m256) -> __m256 {
 }
 
 unsafe fn xyzs_to_labs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
-    let x = xyzs_to_labs_map(_mm256_div_ps(x, _mm256_set1_ps(0.95047)));
+    let x = xyzs_to_labs_map(_mm256_div_ps(x, _mm256_set1_ps(0.9504492182750991)));
     let y = xyzs_to_labs_map(y);
-    let z = xyzs_to_labs_map(_mm256_div_ps(z, _mm256_set1_ps(1.08883)));
+    let z = xyzs_to_labs_map(_mm256_div_ps(z, _mm256_set1_ps(1.0889166484304715)));
 
     let l = _mm256_add_ps(
         _mm256_mul_ps(y, _mm256_set1_ps(116.0)),
