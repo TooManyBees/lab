@@ -511,4 +511,23 @@ mod tests {
         let rgbs2 = labs_to_rgbs(&labs);
         assert_eq!(rgbs2, rgbs);
     }
+
+    #[test]
+    fn test_grey_error() {
+        // Grey colours have a* and b* components equal to zero.  This test goes
+        // through all 8-bit greys and calculates squared error.  If it goes up,
+        // a change might have worsen the precision of the calculations.  If it
+        // goes down, calculations got better.
+        let mut error: f64 = 0.0;
+        let mut count: usize = 0;
+        for i in 0..=255_u32 {
+            let lab = Lab::from_rgb(&[i as u8, i as u8, i as u8]);
+            if lab.a != 0.0 || lab.b != 0.0 {
+                error = (lab.a as f64).mul_add(lab.a as f64, error);
+                error = (lab.b as f64).mul_add(lab.b as f64, error);
+                count += 1;
+            }
+        }
+        assert_eq!((68, 36.78612969792994), (count, error * 1e9));
+    }
 }
