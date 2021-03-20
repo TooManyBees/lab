@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-version = "0.8.1" # bump html_root_url attribute in lib.rs
+version = "0.8.2" # bump html_root_url attribute in lib.rs
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and
@@ -13,7 +13,7 @@ readme = "README.md"
 keywords = ["lab", "color", "pixel", "rgb"]
 categories = ["multimedia::images", "multimedia::video"]
 license = "MIT"
-include = ["src/**/*", "benches/**/*", "Cargo.toml"]
+include = ["src/**/*", "benches/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
 [lib]
 bench = false

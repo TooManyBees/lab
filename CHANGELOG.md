@@ -1,3 +1,8 @@
+# 0.8.2
+
+* No code changes
+* Includes Readme and license files in published crate
+
 # 0.8.1
 
 * Fix a bug in AVX2 path of `labs_to_rgb_bytes`
