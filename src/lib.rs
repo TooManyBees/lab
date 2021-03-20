@@ -91,6 +91,9 @@ extern crate lazy_static;
 #[cfg(test)]
 extern crate rand;
 
+#[cfg(test)]
+mod approx_impl;
+
 #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
 mod simd;
 
@@ -598,6 +601,7 @@ impl LCh {
 #[cfg(test)]
 mod tests {
     use super::{labs_to_rgbs, rgbs_to_labs, LCh, Lab};
+    use approx::assert_relative_eq;
     use rand;
     use rand::distributions::Standard;
     use rand::Rng;
@@ -689,7 +693,7 @@ mod tests {
             .iter()
             .map(|(rgb, _, _)| LCh::from_rgb(rgb))
             .collect();
-        assert_eq!(expected, actual);
+        assert_relative_eq!(expected.as_slice(), actual.as_slice());
     }
 
     #[test]
@@ -706,7 +710,7 @@ mod tests {
             .iter()
             .map(|(_, lab, _)| LCh::from_lab(*lab))
             .collect();
-        assert_eq!(expected, actual);
+        assert_relative_eq!(expected.as_slice(), actual.as_slice());
     }
 
     #[test]
