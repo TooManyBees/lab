@@ -1,4 +1,4 @@
-use crate::{Lab, LCh};
+use crate::{LCh, Lab};
 use approx::{AbsDiffEq, RelativeEq};
 
 impl AbsDiffEq<Lab> for Lab {
@@ -35,7 +35,9 @@ impl RelativeEq<Lab> for Lab {
 impl AbsDiffEq<LCh> for LCh {
     type Epsilon = f32;
 
-    fn default_epsilon() -> Self::Epsilon { std::f32::EPSILON }
+    fn default_epsilon() -> Self::Epsilon {
+        std::f32::EPSILON
+    }
 
     fn abs_diff_eq(&self, other: &LCh, epsilon: Self::Epsilon) -> bool {
         AbsDiffEq::abs_diff_eq(&self.l, &other.l, epsilon)
@@ -45,7 +47,9 @@ impl AbsDiffEq<LCh> for LCh {
 }
 
 impl RelativeEq<LCh> for LCh {
-    fn default_max_relative() -> Self::Epsilon { std::f32::EPSILON }
+    fn default_max_relative() -> Self::Epsilon {
+        std::f32::EPSILON
+    }
 
     fn relative_eq(
         &self,
