@@ -1,3 +1,7 @@
+# 0.9.0
+
+* add `LCh` data struct - @mina86
+
 # 0.8.2
 
 * No code changes
