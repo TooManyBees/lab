@@ -602,8 +602,6 @@ impl LCh {
 mod tests {
     use super::{labs_to_rgbs, rgbs_to_labs, LCh, Lab};
     use approx::assert_relative_eq;
-    use rand;
-    use rand::distributions::Standard;
     use rand::Rng;
 
     const PINK: Lab = Lab {
@@ -760,8 +758,10 @@ mod tests {
     fn test_rgb_to_lab_to_rgb() {
         let rgbs: Vec<[u8; 3]> = {
             let rand_seed = [1u8; 32];
-            let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
-            rng.sample_iter(&Standard).take(2048).collect()
+            let rng: rand::rngs::StdRng = rand::SeedableRng::from_seed(rand_seed);
+            rng.sample_iter(&rand::distributions::Standard)
+                .take(2048)
+                .collect()
         };
         let labs = rgbs_to_labs(&rgbs);
         let rgbs2 = labs_to_rgbs(&labs);
