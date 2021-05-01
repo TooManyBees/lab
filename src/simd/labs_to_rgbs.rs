@@ -1,5 +1,5 @@
 use crate::simd::math::powf256_ps;
-use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
+use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA, S_0};
 use std::arch::x86_64::*;
 use std::{f32, iter, mem};
 
@@ -194,7 +194,7 @@ unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 
 #[inline]
 unsafe fn xyzs_to_rgbs_map(c: __m256) -> __m256 {
-    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
+    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(S_0), _CMP_GT_OQ);
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
         let raised = powf256_ps(c, _mm256_set1_ps(1.0 / 2.4));
@@ -256,7 +256,7 @@ mod test {
     lazy_static! {
         static ref RGBS: Vec<[u8; 3]> = {
             let rand_seed = [0u8; 32];
-            let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
+            let rng: rand::rngs::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(512).collect()
         };
     }
