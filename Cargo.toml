@@ -19,7 +19,7 @@ include = ["src/**/*", "benches/**/*", "Cargo.toml", "README.md", "LICENSE"]
 bench = false
 
 [dev-dependencies]
-rand = "0.5"
+rand = "0.8"
 criterion = { version = "0.3", default-features = false }
 lazy_static = "1.3.0"
 pretty_assertions = "0.6"
