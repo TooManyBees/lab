@@ -12,7 +12,7 @@ use rand::Rng;
 lazy_static! {
     static ref LABS: Vec<lab::Lab> = {
         let rand_seed = [0u8; 32];
-        let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
+        let rng: rand::rngs::StdRng = rand::SeedableRng::from_seed(rand_seed);
         let labs: Vec<[f32; 8]> = rng.sample_iter(&Standard).take(512).collect();
         labs.iter()
             .map(|lab| lab::Lab {

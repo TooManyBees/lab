@@ -1,5 +1,5 @@
 use crate::simd::math::powf256_ps;
-use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA};
+use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA, S_0};
 use std::arch::x86_64::*;
 use std::{f32, iter, mem};
 
@@ -159,32 +159,32 @@ unsafe fn labs_to_xyzs(l: __m256, a: __m256, b: __m256) -> (__m256, __m256, __m2
     };
 
     (
-        _mm256_mul_ps(xr, _mm256_set1_ps(0.95047)),
+        _mm256_mul_ps(xr, _mm256_set1_ps(0.9504492182750991)),
         yr,
-        _mm256_mul_ps(zr, _mm256_set1_ps(1.08883)),
+        _mm256_mul_ps(zr, _mm256_set1_ps(1.0889166484304715)),
     )
 }
 
 #[inline]
 unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m256) {
     let r = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.2404541621141054));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-1.5371385127977166));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(-0.4985314095560162));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(3.240812398895283));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-1.5373084456298136));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(-0.4985865229069666));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
     let g = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(-0.9692660305051868));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(1.8760108454466942));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(0.04155601753034984));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(-0.9692430170086407));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(1.8759663029085742));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(0.04155503085668564));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
     let b = {
-        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(0.05564343095911469));
-        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-0.20402591351675387));
-        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(1.0572251882231791));
+        let prod_x = _mm256_mul_ps(x, _mm256_set1_ps(0.055638398436112804));
+        let prod_y = _mm256_mul_ps(y, _mm256_set1_ps(-0.20400746093241362));
+        let prod_z = _mm256_mul_ps(z, _mm256_set1_ps(1.0571295702861434));
         let sum = _mm256_add_ps(_mm256_add_ps(prod_x, prod_y), prod_z);
         xyzs_to_rgbs_map(sum)
     };
@@ -194,7 +194,7 @@ unsafe fn xyzs_to_rgbs(x: __m256, y: __m256, z: __m256) -> (__m256, __m256, __m2
 
 #[inline]
 unsafe fn xyzs_to_rgbs_map(c: __m256) -> __m256 {
-    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(0.0031308), _CMP_GT_OQ);
+    let mask = _mm256_cmp_ps(c, _mm256_set1_ps(S_0), _CMP_GT_OQ);
     let false_branch = _mm256_mul_ps(c, _mm256_set1_ps(12.92));
     let true_branch = {
         let raised = powf256_ps(c, _mm256_set1_ps(1.0 / 2.4));
@@ -256,7 +256,7 @@ mod test {
     lazy_static! {
         static ref RGBS: Vec<[u8; 3]> = {
             let rand_seed = [0u8; 32];
-            let mut rng: rand::StdRng = rand::SeedableRng::from_seed(rand_seed);
+            let rng: rand::rngs::StdRng = rand::SeedableRng::from_seed(rand_seed);
             rng.sample_iter(&Standard).take(512).collect()
         };
     }

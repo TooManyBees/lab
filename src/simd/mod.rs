@@ -3,8 +3,6 @@
 //! This module is conditionally compiled by the cfg gate
 //! `#[cfg(target_arch = "x86_64")]`
 
-#[cfg(test)]
-mod approx_impl;
 mod labs_to_rgbs;
 mod math;
 mod rgbs_to_labs;
