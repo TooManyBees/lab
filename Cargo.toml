@@ -22,8 +22,8 @@ bench = false
 rand = "0.8"
 criterion = { version = "0.3", default-features = false }
 lazy_static = "1.3.0"
-pretty_assertions = "0.6"
-approx = "0.3"
+pretty_assertions = "0.7"
+approx = "0.5"
 
 [[bench]]
 name = "rgb_to_lab"
