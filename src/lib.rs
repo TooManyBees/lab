@@ -482,12 +482,12 @@ impl Lab {
     /// assert_eq!([240, 33, 95], rgb);
     /// ```
     pub fn to_rgb(&self) -> [u8; 3] {
-        xyz_to_rgb(lab_to_xyz(&self))
+        xyz_to_rgb(lab_to_xyz(self))
     }
 
     #[doc(hidden)]
     pub fn to_rgb_normalized(&self) -> [f32; 3] {
-        xyz_to_rgb_normalized(lab_to_xyz(&self))
+        xyz_to_rgb_normalized(lab_to_xyz(self))
     }
 
     /// Measures the perceptual distance between the colors of one `Lab`
@@ -516,7 +516,7 @@ impl LCh {
     /// assert_eq!(lab::LCh { l: 52.334686, c: 78.15284, h: 0.25873056 }, lch);
     /// ```
     pub fn from_rgb(rgb: &[u8; 3]) -> Self {
-        LCh::from_lab(Lab::from_rgb(&rgb))
+        LCh::from_lab(Lab::from_rgb(rgb))
     }
 
     /// Constructs a new `LCh` from a four-element array of `u8`s
@@ -532,7 +532,7 @@ impl LCh {
     /// assert_eq!(lab::LCh { l: 52.334686, c: 78.15284, h: 0.25873056 }, lch);
     /// ```
     pub fn from_rgba(rgba: &[u8; 4]) -> Self {
-        LCh::from_lab(Lab::from_rgba(&rgba))
+        LCh::from_lab(Lab::from_rgba(rgba))
     }
 
     /// Constructs a new `LCh` from a `Lab`
