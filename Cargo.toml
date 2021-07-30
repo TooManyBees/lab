@@ -2,6 +2,7 @@
 name = "lab"
 version = "0.11.0"
 authors = ["Jesse Bees <jesse@toomanybees.com>"]
+edition = "2018"
 description = """
 Tools for converting RGB colors to the CIE-L*a*b* color space, and
 comparing differences in color.

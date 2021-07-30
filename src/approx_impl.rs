@@ -5,7 +5,7 @@ impl AbsDiffEq<Lab> for Lab {
     type Epsilon = f32;
 
     fn default_epsilon() -> Self::Epsilon {
-        std::f32::EPSILON
+        f32::EPSILON
     }
 
     fn abs_diff_eq(&self, other: &Lab, epsilon: Self::Epsilon) -> bool {
@@ -17,7 +17,7 @@ impl AbsDiffEq<Lab> for Lab {
 
 impl RelativeEq<Lab> for Lab {
     fn default_max_relative() -> Self::Epsilon {
-        std::f32::EPSILON
+        f32::EPSILON
     }
 
     fn relative_eq(
@@ -36,7 +36,7 @@ impl AbsDiffEq<LCh> for LCh {
     type Epsilon = f32;
 
     fn default_epsilon() -> Self::Epsilon {
-        std::f32::EPSILON
+        f32::EPSILON
     }
 
     fn abs_diff_eq(&self, other: &LCh, epsilon: Self::Epsilon) -> bool {
@@ -48,7 +48,7 @@ impl AbsDiffEq<LCh> for LCh {
 
 impl RelativeEq<LCh> for LCh {
     fn default_max_relative() -> Self::Epsilon {
-        std::f32::EPSILON
+        f32::EPSILON
     }
 
     fn relative_eq(

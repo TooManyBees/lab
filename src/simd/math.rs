@@ -37,7 +37,7 @@ use std::arch::x86_64::*;
 use std::mem;
 
 static X7F: i32 = 0x7f;
-static SQRTHF: f32 = 0.70710678118654752;
+static SQRTHF: f32 = std::f32::consts::FRAC_1_SQRT_2;
 static LOG_P0: f32 = 7.0376836292E-2;
 static LOG_P1: f32 = -1.1514610310E-1;
 static LOG_P2: f32 = 1.1676998740E-1;
@@ -116,7 +116,7 @@ pub unsafe fn log256_ps(x: __m256) -> __m256 {
 
 static EXP_HI: f32 = 88.3762626647949;
 static EXP_LO: f32 = -88.3762626647949;
-static LOG2EF: f32 = 1.44269504088896341;
+static LOG2EF: f32 = std::f32::consts::LOG2_E;
 static EXP_C1: f32 = 0.693359375;
 static EXP_C2: f32 = -2.12194440e-4;
 static EXP_P0: f32 = 1.9875691500E-4;

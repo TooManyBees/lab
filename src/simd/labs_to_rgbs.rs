@@ -1,7 +1,7 @@
 use crate::simd::math::powf256_ps;
 use crate::{Lab, CBRT_EPSILON, EPSILON, KAPPA, S_0};
 use std::arch::x86_64::*;
-use std::{f32, iter, mem};
+use std::{iter, mem};
 
 static BLANK_LAB: Lab = Lab {
     l: f32::NAN,
