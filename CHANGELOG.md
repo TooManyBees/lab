@@ -1,3 +1,8 @@
+# 0.11.0
+
+* bump `pretty_assertions` (dev dependency) crate from version 0.6 to 0.7
+* bump `approx` (dev dependency) crate from version 0.3 to 0.5
+
 # 0.10.0
 
 * bump `rand` crate from version 0.5 to 0.8
